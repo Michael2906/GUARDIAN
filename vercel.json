@@ -1,0 +1,34 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server/server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/server/server.js"
+    },
+    {
+      "src": "/admin-dashboard.html",
+      "dest": "/admin/admin-dashboard.html"
+    },
+    {
+      "src": "/user-management.html", 
+      "dest": "/admin/user-management.html"
+    },
+    {
+      "src": "/company-management.html",
+      "dest": "/admin/company-management.html"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
+}
