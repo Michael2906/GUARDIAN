@@ -1,0 +1,678 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Two-Factor Authentication - GUARDIAN 3PL</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body
+    class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center"
+  >
+    <div class="max-w-md w-full mx-4">
+      <!-- Logo and Header -->
+      <div class="text-center mb-8">
+        <div class="text-4xl font-bold text-blue-600 mb-2">
+          <i class="fas fa-shield-alt mr-2"></i>GUARDIAN
+        </div>
+        <p class="text-gray-600">3PL Logistics Management Platform</p>
+      </div>
+
+      <!-- 2FA Verification Card -->
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="p-8">
+          <!-- Header -->
+          <div class="text-center mb-6">
+            <div
+              class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4"
+            >
+              <i class="fas fa-mobile-alt text-blue-600 text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">
+              Two-Factor Authentication
+            </h1>
+            <p class="text-gray-600">
+              Enter the 6-digit code from your authenticator app
+            </p>
+          </div>
+
+          <!-- User Info -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="flex items-center">
+              <div
+                class="bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center mr-3"
+              >
+                <i class="fas fa-user text-white text-sm"></i>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900" id="user-email">
+                  Loading...
+                </p>
+                <p class="text-sm text-gray-500">Password verified ✓</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div class="mb-6 text-center">
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div class="flex items-center justify-center mb-2">
+                <i class="fas fa-info-circle text-blue-600 mr-2"></i>
+                <span class="text-sm font-medium text-blue-800">How to get your code</span>
+              </div>
+              <p class="text-sm text-blue-700">
+                Open your authenticator app (Google Authenticator, Authy, etc.) and find the 6-digit code for GUARDIAN.
+              </p>
+            </div>
+          </div>
+              </button>
+            </div>
+          </div>
+
+          <!-- 2FA Form -->
+          <div id="manual-code-section">
+            <form id="twofa-form">
+              <div class="mb-6">
+                <div class="mb-2">
+                  <label
+                    for="verification-code"
+                    class="block text-sm font-medium text-gray-700 text-center"
+                  >
+                    Enter Authentication Code
+                  </label>
+                </div>
+                <input
+                  type="text"
+                  id="verification-code"
+                  name="code"
+                  maxlength="8"
+                  placeholder="000000"
+                  autocomplete="one-time-code"
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-2xl font-mono tracking-widest"
+                  required
+                />
+                <p class="text-xs text-gray-500 mt-2 text-center" id="code-help">
+                  Enter the 6-digit code from Google Authenticator or your
+                  8-character backup code
+                </p>
+              </div>
+
+              <!-- Submit Button -->
+              <button
+                type="submit"
+                id="verify-button"
+                class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+              >
+                <span id="verify-text">Verify & Continue</span>
+                <i
+                  id="verify-spinner"
+                  class="fas fa-spinner fa-spin ml-2 hidden"
+                ></i>
+              </button>
+            </form>
+          </div>
+
+          <!-- Alternative Options (only show when manual code is visible) -->
+          <div id="alternative-options" class="mt-6 text-center hidden">
+            <button
+              onclick="showBackupCodeHelp()"
+              class="text-sm text-blue-600 hover:text-blue-500 underline"
+            >
+              Use a backup code instead
+            </button>
+          </div>
+
+          <!-- Back to Login -->
+          <div class="mt-6 text-center">
+            <a href="/" class="text-sm text-gray-500 hover:text-gray-700">
+              <i class="fas fa-arrow-left mr-1"></i>Back to Login
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div
+        id="backup-help"
+        class="hidden mt-4 bg-white rounded-lg p-4 shadow-sm border"
+      >
+        <h3 class="font-medium text-gray-900 mb-2">
+          <i class="fas fa-key text-yellow-500 mr-2"></i>Using Backup Codes
+        </h3>
+        <p class="text-sm text-gray-600 mb-2">
+          If you don't have access to your authenticator app, you can use one of
+          your backup codes:
+        </p>
+        <ul class="text-xs text-gray-500 space-y-1">
+          <li>• Enter any unused 8-character backup code</li>
+          <li>• Each backup code can only be used once</li>
+          <li>• Backup codes were provided when you enabled 2FA</li>
+        </ul>
+      </div>
+
+      <!-- Error/Success Messages -->
+      <div id="message-container" class="mt-4 hidden">
+        <div id="message" class="p-4 rounded-lg text-sm"></div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "/api";
+
+      // Get session data
+      function getSessionData() {
+        return {
+          userId: localStorage.getItem("guardian_2fa_user_id"),
+          email: localStorage.getItem("guardian_2fa_email"),
+          tempSession: localStorage.getItem("guardian_2fa_temp_session"),
+          remember: localStorage.getItem("guardian_2fa_remember") === "true",
+        };
+      }
+
+      // Show/hide loading state
+      function setLoading(loading) {
+        const button = document.getElementById("verify-button");
+        const text = document.getElementById("verify-text");
+        const spinner = document.getElementById("verify-spinner");
+        const input = document.getElementById("verification-code");
+
+        button.disabled = loading;
+        if (loading) {
+          text.textContent = "Verifying...";
+          spinner.classList.remove("hidden");
+          input.disabled = true;
+        } else {
+          text.textContent = "Verify & Continue";
+          spinner.classList.add("hidden");
+          input.disabled = false;
+        }
+      }
+
+      // Show message
+      function showMessage(message, type = "error") {
+        const container = document.getElementById("message-container");
+        const messageEl = document.getElementById("message");
+
+        messageEl.textContent = message;
+        messageEl.className = `p-4 rounded-lg text-sm ${
+          type === "success"
+            ? "bg-green-100 text-green-800 border border-green-200"
+            : "bg-red-100 text-red-800 border border-red-200"
+        }`;
+        container.classList.remove("hidden");
+
+        if (type === "error") {
+          setTimeout(() => container.classList.add("hidden"), 5000);
+        }
+      }
+
+      // Hide message
+      function hideMessage() {
+        document.getElementById("message-container").classList.add("hidden");
+      }
+
+      // Toggle manual code entry section
+      function toggleManualCodeEntry() {
+        const manualSection = document.getElementById("manual-code-section");
+        const toggleButton = document.getElementById("manual-code-toggle");
+        const toggleText = document.getElementById("toggle-text");
+        const alternativeOptions = document.getElementById("alternative-options");
+        const pushSection = document.getElementById("push-notification-status");
+
+        const isHidden = manualSection.classList.contains("hidden");
+        
+        if (isHidden) {
+          // Show manual code entry
+          manualSection.classList.remove("hidden");
+          alternativeOptions.classList.remove("hidden");
+          toggleButton.innerHTML = `
+            <div class="bg-blue-50 rounded-lg p-4 border-2 border-blue-200 hover:border-blue-300 transition-colors">
+              <button type="button" onclick="toggleManualCodeEntry()" class="text-sm text-blue-600 hover:text-blue-800 focus:outline-none flex items-center justify-center w-full">
+                <i class="fas fa-bell mr-2"></i>
+                <span>Hide manual entry, use push notification instead</span>
+                <i class="fas fa-chevron-up ml-2"></i>
+              </button>
+            </div>
+          `;
+          
+          // Focus on the input
+          setTimeout(() => {
+            document.getElementById("verification-code").focus();
+          }, 100);
+          
+          // Optionally dim the push notification section
+          if (pushSection && !pushSection.classList.contains("hidden")) {
+            pushSection.style.opacity = "0.6";
+          }
+        } else {
+          // Hide manual code entry
+          manualSection.classList.add("hidden");
+          alternativeOptions.classList.add("hidden");
+          toggleButton.innerHTML = `
+            <div class="bg-gray-50 rounded-lg p-4 border-2 border-dashed border-gray-200 hover:border-gray-300 transition-colors">
+              <button type="button" onclick="toggleManualCodeEntry()" class="text-sm text-gray-600 hover:text-gray-800 focus:outline-none flex items-center justify-center w-full">
+                <i class="fas fa-keyboard mr-2"></i>
+                <span>Can't access notifications? Use verification code instead</span>
+                <i class="fas fa-chevron-down ml-2"></i>
+              </button>
+            </div>
+          `;
+          
+          // Clear the input
+          document.getElementById("verification-code").value = "";
+          
+          // Restore push notification section opacity
+          if (pushSection && !pushSection.classList.contains("hidden")) {
+            pushSection.style.opacity = "1";
+          }
+        }
+      }
+
+      // Show backup code help
+      function showBackupCodeHelp() {
+        document.getElementById("backup-help").classList.toggle("hidden");
+      }
+
+      // Redirect after successful login
+      function redirectAfterLogin(user) {
+        setTimeout(() => {
+          switch (user.role) {
+            case "storage-admin":
+              window.location.href = "/admin/admin-dashboard.html";
+              break;
+            case "storage-manager":
+              window.location.href = "/company-dashboard.html";
+              break;
+            case "storage-employee":
+              window.location.href = "/staff-dashboard.html";
+              break;
+            case "client-admin":
+            case "client-user":
+            case "client-viewer":
+              window.location.href = "/client-dashboard.html";
+              break;
+            default:
+              window.location.href = "/dashboard.html";
+          }
+        }, 1000);
+      }
+
+      // Show push notification status
+      function showPushNotificationStatus() {
+        const statusDiv = document.getElementById("push-notification-status");
+        const manualToggle = document.getElementById("manual-code-toggle");
+        
+        statusDiv.classList.remove("hidden");
+        manualToggle.classList.remove("hidden");
+        
+        // Start polling for push notification approval
+        startPushNotificationPolling();
+      }      // Hide push notification status
+      function hidePushNotificationStatus() {
+        const statusDiv = document.getElementById("push-notification-status");
+        const manualToggle = document.getElementById("manual-code-toggle");
+
+        statusDiv.classList.add("hidden");
+        manualToggle.classList.add("hidden");
+
+        // Stop polling
+        if (pushNotificationPollInterval) {
+          clearInterval(pushNotificationPollInterval);
+          pushNotificationPollInterval = null;
+        }
+      }
+
+      // Update push notification status
+      function updatePushNotificationStatus(status, message) {
+        const card = document.getElementById("push-notification-card");
+        const iconContainer = document.getElementById("push-icon-container");
+        const icon = document.getElementById("push-icon");
+        const title = document.getElementById("push-title");
+        const messageEl = document.getElementById("push-message");
+        const statusText = document.getElementById("push-status-text");
+        const statusIndicator = document.getElementById(
+          "push-status-indicator"
+        );
+        const progress = document.getElementById("push-progress");
+
+        switch (status) {
+          case "sent":
+            card.className =
+              "bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-4 border border-green-200 transition-all duration-300";
+            iconContainer.className =
+              "bg-green-100 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300";
+            icon.className = "fas fa-bell text-green-600";
+            title.innerHTML =
+              '<i class="fas fa-paper-plane mr-1"></i>Push Notification Sent';
+            title.className = "text-sm font-medium text-green-800";
+            messageEl.textContent =
+              message ||
+              "Push notification sent to your devices. Tap 'Approve' to complete your login instantly.";
+            messageEl.className = "text-sm text-green-700 mt-1";
+            statusText.textContent = "Waiting for approval...";
+            statusIndicator.innerHTML =
+              '<div class="w-2 h-2 bg-green-400 rounded-full mr-2 animate-pulse"></div><span>Waiting for approval...</span>';
+            break;
+
+          case "approved":
+            card.className =
+              "bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-4 border border-green-300 transition-all duration-300";
+            iconContainer.className =
+              "bg-green-200 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300 animate-bounce";
+            icon.className = "fas fa-check-circle text-green-600";
+            title.innerHTML =
+              '<i class="fas fa-check-circle mr-1"></i>Login Approved!';
+            title.className = "text-sm font-medium text-green-900";
+            messageEl.textContent =
+              "Login approved via push notification! Redirecting to your dashboard...";
+            messageEl.className = "text-sm text-green-800 mt-1 font-medium";
+            statusIndicator.innerHTML =
+              '<div class="w-2 h-2 bg-green-500 rounded-full mr-2"></div><span class="font-medium">Approved ✓</span>';
+            progress.style.width = "100%";
+            progress.className =
+              "bg-green-500 h-1.5 rounded-full transition-all duration-1000";
+            break;
+
+          case "denied":
+            card.className =
+              "bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-4 border border-red-200 transition-all duration-300";
+            iconContainer.className =
+              "bg-red-100 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300";
+            icon.className = "fas fa-times-circle text-red-600";
+            title.innerHTML =
+              '<i class="fas fa-times-circle mr-1"></i>Login Denied';
+            title.className = "text-sm font-medium text-red-800";
+            messageEl.textContent =
+              "Login was denied via push notification. Please enter your 2FA code below to continue.";
+            messageEl.className = "text-sm text-red-700 mt-1";
+            statusIndicator.innerHTML =
+              '<div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div><span>Denied ✗</span>';
+            progress.style.width = "0%";
+            progress.className =
+              "bg-red-400 h-1.5 rounded-full transition-all duration-1000";
+            break;
+
+          case "timeout":
+            card.className =
+              "bg-gradient-to-r from-yellow-50 to-orange-50 rounded-lg p-4 border border-yellow-200 transition-all duration-300";
+            iconContainer.className =
+              "bg-yellow-100 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300";
+            icon.className = "fas fa-clock text-yellow-600";
+            title.innerHTML =
+              '<i class="fas fa-clock mr-1"></i>Notification Timed Out';
+            title.className = "text-sm font-medium text-yellow-800";
+            messageEl.textContent =
+              "Push notification timed out. Please enter your 2FA code below to continue.";
+            messageEl.className = "text-sm text-yellow-700 mt-1";
+            statusIndicator.innerHTML =
+              '<div class="w-2 h-2 bg-yellow-500 rounded-full mr-2"></div><span>Timed out</span>';
+            progress.style.width = "0%";
+            progress.className =
+              "bg-yellow-400 h-1.5 rounded-full transition-all duration-1000";
+            break;
+
+          case "error":
+            card.className =
+              "bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-4 border border-red-200 transition-all duration-300";
+            iconContainer.className =
+              "bg-red-100 rounded-full w-10 h-10 flex items-center justify-center transition-all duration-300";
+            icon.className = "fas fa-exclamation-triangle text-red-600";
+            title.innerHTML =
+              '<i class="fas fa-exclamation-triangle mr-1"></i>Notification Failed';
+            title.className = "text-sm font-medium text-red-800";
+            messageEl.textContent =
+              message ||
+              "Push notification failed to send. Please enter your 2FA code below.";
+            messageEl.className = "text-sm text-red-700 mt-1";
+            statusIndicator.innerHTML =
+              '<div class="w-2 h-2 bg-red-500 rounded-full mr-2"></div><span>Failed</span>';
+            progress.style.width = "0%";
+            progress.className =
+              "bg-red-400 h-1.5 rounded-full transition-all duration-1000";
+            break;
+        }
+      }
+
+      // Start countdown timer
+      function startCountdownTimer() {
+        let timeLeft = 120; // 2 minutes in seconds
+        const countdownEl = document.getElementById("push-countdown");
+        const progressEl = document.getElementById("push-progress");
+
+        const timer = setInterval(() => {
+          timeLeft--;
+
+          // Update countdown display
+          const minutes = Math.floor(timeLeft / 60);
+          const seconds = timeLeft % 60;
+          countdownEl.textContent = `${minutes}:${seconds
+            .toString()
+            .padStart(2, "0")}`;
+
+          // Update progress bar
+          const progress = (timeLeft / 120) * 100;
+          progressEl.style.width = `${progress}%`;
+
+          // Change color as time runs out
+          if (timeLeft <= 30) {
+            progressEl.className =
+              "bg-red-400 h-1.5 rounded-full transition-all duration-1000";
+          } else if (timeLeft <= 60) {
+            progressEl.className =
+              "bg-yellow-400 h-1.5 rounded-full transition-all duration-1000";
+          }
+
+          // Time's up
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            updatePushNotificationStatus("timeout");
+            if (pushNotificationPollInterval) {
+              clearInterval(pushNotificationPollInterval);
+              pushNotificationPollInterval = null;
+            }
+          }
+        }, 1000);
+
+        return timer;
+      }
+
+      // Start polling for push notification response
+      function startPushNotificationPolling() {
+        const sessionData = getSessionData();
+        let attempts = 0;
+        const maxAttempts = 60; // Poll for 2 minutes (60 * 2 seconds)
+        let countdownTimer = null;
+
+        // Start countdown timer
+        countdownTimer = startCountdownTimer();
+
+        pushNotificationPollInterval = setInterval(async () => {
+          attempts++;
+
+          if (attempts >= maxAttempts) {
+            updatePushNotificationStatus("timeout");
+            clearInterval(pushNotificationPollInterval);
+            if (countdownTimer) clearInterval(countdownTimer);
+            pushNotificationPollInterval = null;
+            return;
+          }
+
+          try {
+            // This would check if the push notification was approved
+            // For now, we'll just show the waiting state
+            // In a real implementation, you'd poll an endpoint to check approval status
+          } catch (error) {
+            console.error("Push notification polling error:", error);
+          }
+        }, 2000); // Poll every 2 seconds
+      }
+
+      // Initialize page
+      function initializePage() {
+        const sessionData = getSessionData();
+
+        // Check if we have valid session data
+        if (
+          !sessionData.userId ||
+          !sessionData.tempSession ||
+          !sessionData.email
+        ) {
+          showMessage("Invalid session. Please log in again.");
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 2000);
+          return;
+        }
+
+        // Display user email
+        document.getElementById("user-email").textContent = sessionData.email;
+
+        // Show push notification status if it was sent
+        if (sessionData.pushNotificationSent) {
+          showPushNotificationStatus();
+        } else {
+          // If no push notification was sent, show manual code entry
+          toggleManualCodeEntry();
+          document.getElementById("manual-code-toggle").classList.add("hidden");
+        }
+
+        // Only focus on input if manual code section is visible
+        if (!document.getElementById("manual-code-section").classList.contains("hidden")) {
+          document.getElementById("verification-code").focus();
+        }
+      }
+
+      // Handle form submission
+      document
+        .getElementById("twofa-form")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          hideMessage();
+
+          const sessionData = getSessionData();
+          const code = document.getElementById("verification-code").value;
+
+          // Validation
+          if (!code) {
+            showMessage("Please enter your verification code");
+            return;
+          }
+
+          if (code.length < 6) {
+            showMessage("Verification code must be at least 6 characters");
+            return;
+          }
+
+          setLoading(true);
+
+          try {
+            const response = await fetch(`${API_BASE_URL}/auth/login-2fa`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                userId: sessionData.userId,
+                token: code,
+                tempSession: sessionData.tempSession,
+              }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              // Store tokens
+              localStorage.setItem(
+                "guardian_access_token",
+                data.data.tokens.accessToken
+              );
+
+              if (sessionData.remember) {
+                localStorage.setItem(
+                  "guardian_refresh_token",
+                  data.data.tokens.refreshToken
+                );
+              } else {
+                sessionStorage.setItem(
+                  "guardian_refresh_token",
+                  data.data.tokens.refreshToken
+                );
+              }
+
+              // Store user info
+              localStorage.setItem(
+                "guardian_user",
+                JSON.stringify(data.data.user)
+              );
+
+              // Clean up temporary 2FA data
+              localStorage.removeItem("guardian_2fa_temp_session");
+              localStorage.removeItem("guardian_2fa_user_id");
+              localStorage.removeItem("guardian_2fa_email");
+              localStorage.removeItem("guardian_2fa_remember");
+
+              // Show success message
+              let message = "2FA verification successful! Redirecting...";
+              if (data.data.usedBackupCode) {
+                message += ` (${data.data.remainingBackupCodes} backup codes remaining)`;
+              }
+              showMessage(message, "success");
+
+              // Redirect based on user role
+              redirectAfterLogin(data.data.user);
+            } else {
+              showMessage(
+                data.error || "2FA verification failed. Please try again."
+              );
+
+              // Clear the input for retry
+              document.getElementById("verification-code").value = "";
+              document.getElementById("verification-code").focus();
+            }
+          } catch (error) {
+            console.error("2FA verification error:", error);
+            showMessage(
+              "Network error. Please check your connection and try again."
+            );
+          } finally {
+            setLoading(false);
+          }
+        });
+
+      // Auto-format verification code input (digits only)
+      document
+        .getElementById("verification-code")
+        .addEventListener("input", (e) => {
+          let value = e.target.value.replace(/\D/g, ""); // Remove non-digits
+
+          // Limit to 8 characters (backup codes are 8, TOTP codes are 6)
+          if (value.length > 8) {
+            value = value.slice(0, 8);
+          }
+
+          e.target.value = value;
+        });
+
+      // Auto-submit when 6 digits are entered (for TOTP codes)
+      document
+        .getElementById("verification-code")
+        .addEventListener("input", (e) => {
+          if (e.target.value.length === 6 && /^\d{6}$/.test(e.target.value)) {
+            // Small delay to let user see the complete code
+            setTimeout(() => {
+              document
+                .getElementById("twofa-form")
+                .dispatchEvent(new Event("submit", { cancelable: true }));
+            }, 300);
+          }
+        });
+
+      // Initialize when page loads
+      document.addEventListener("DOMContentLoaded", initializePage);
+    </script>
+  </body>
+</html>

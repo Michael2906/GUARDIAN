@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GUARDIAN Admin Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body class="bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div class="text-2xl font-bold text-purple-600">
+              <i class="fas fa-shield-alt mr-2"></i>GUARDIAN
+            </div>
+            <span class="text-gray-400">|</span>
+            <h1 class="text-xl font-semibold text-gray-800">
+              Platform Administration
+            </h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <!-- User Options Dropdown -->
+            <div class="relative">
+              <button
+                id="user-menu-button"
+                onclick="toggleUserMenu()"
+                class="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-lg px-3 py-2 transition-colors"
+              >
+                <div class="flex items-center space-x-2">
+                  <div
+                    class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs font-medium"
+                    id="user-avatar"
+                  >
+                    <i class="fas fa-user"></i>
+                  </div>
+                  <span id="user-name" class="font-medium">Loading...</span>
+                  <i
+                    class="fas fa-chevron-down transition-transform"
+                    id="user-menu-chevron"
+                  ></i>
+                </div>
+              </button>
+
+              <!-- Dropdown Menu -->
+              <div
+                id="user-menu"
+                class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+              >
+                <!-- User Info Header -->
+                <div class="px-4 py-3 border-b border-gray-100">
+                  <div class="flex items-center space-x-3">
+                    <div
+                      class="bg-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-medium"
+                      id="user-avatar-large"
+                    >
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <p
+                        class="text-sm font-medium text-gray-900"
+                        id="user-full-name"
+                      >
+                        Loading...
+                      </p>
+                      <p class="text-xs text-gray-600" id="user-email">
+                        Loading...
+                      </p>
+                      <span
+                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1"
+                      >
+                        <i class="fas fa-crown mr-1"></i>GUARDIAN Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Menu Items -->
+                <div class="py-2">
+                  <!-- Account Settings -->
+                  <button
+                    onclick="viewProfile()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-user-circle text-gray-400 mr-3 w-4"></i>
+                    View Profile
+                  </button>
+
+                  <!-- Account Security -->
+                  <button
+                    onclick="accountSecurity()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-shield-alt text-gray-400 mr-3 w-4"></i>
+                    Account Security
+                  </button>
+
+                  <!-- 2FA Setup -->
+                  <button
+                    onclick="setup2FA()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-mobile-alt text-gray-400 mr-3 w-4"></i>
+                    Two-Factor Authentication
+                  </button>
+
+                  <!-- Change Password -->
+                  <button
+                    onclick="changePassword()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-key text-gray-400 mr-3 w-4"></i>
+                    Change Password
+                  </button>
+
+                  <!-- Preferences -->
+                  <button
+                    onclick="userPreferences()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-cog text-gray-400 mr-3 w-4"></i>
+                    Preferences
+                  </button>
+                </div>
+
+                <div class="border-t border-gray-100 py-2">
+                  <!-- Navigation Items -->
+                  <button
+                    onclick="navigateTo('/admin/user-management.html')"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-users text-purple-500 mr-3 w-4"></i>
+                    User Management
+                  </button>
+
+                  <button
+                    onclick="navigateTo('/dashboard.html')"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-tachometer-alt text-gray-500 mr-3 w-4"></i>
+                    User Dashboard
+                  </button>
+                </div>
+
+                <div class="border-t border-gray-100 py-2">
+                  <!-- Logout -->
+                  <button
+                    onclick="logout()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <i class="fas fa-sign-out-alt text-red-500 mr-3 w-4"></i>
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <!-- Welcome Section -->
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900" id="welcome-title">
+          GUARDIAN Platform Administration
+        </h1>
+        <p class="text-gray-600 mt-2">
+          Manage the entire GUARDIAN 3PL ecosystem
+        </p>
+      </div>
+
+      <!-- Platform Statistics -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-purple-600">
+              <i class="fas fa-building"></i>
+            </div>
+            <div class="text-right">
+              <div
+                class="text-2xl font-bold text-gray-900"
+                id="total-companies"
+              >
+                --
+              </div>
+              <div class="text-sm text-gray-600">Storage Companies</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-blue-600">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-bold text-gray-900" id="total-users">
+                --
+              </div>
+              <div class="text-sm text-gray-600">Platform Users</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-green-600">
+              <i class="fas fa-chart-line"></i>
+            </div>
+            <div class="text-right">
+              <div
+                class="text-2xl font-bold text-gray-900"
+                id="active-sessions"
+              >
+                --
+              </div>
+              <div class="text-sm text-gray-600">Active Sessions</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-orange-600">
+              <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="text-right">
+              <div class="text-2xl font-bold text-gray-900" id="system-alerts">
+                --
+              </div>
+              <div class="text-sm text-gray-600">System Alerts</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="bg-white rounded-lg shadow-sm border p-6 mb-8">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">
+          <i class="fas fa-lightning-bolt mr-2 text-purple-600"></i>Quick
+          Actions
+        </h3>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-6 w-full">
+          <button
+            onclick="createUser()"
+            class="flex flex-col items-center p-6 bg-blue-50 hover:bg-blue-100 rounded-lg border transition-colors w-full h-32 justify-center"
+          >
+            <i class="fas fa-user-plus text-3xl text-blue-600 mb-3"></i>
+            <span class="text-base font-medium text-gray-900">Manage Users</span>
+          </button>
+
+          <button
+            onclick="createCompany()"
+            class="flex flex-col items-center p-6 bg-purple-50 hover:bg-purple-100 rounded-lg border transition-colors w-full h-32 justify-center"
+          >
+            <i class="fas fa-building text-3xl text-purple-600 mb-3"></i>
+            <span class="text-base font-medium text-gray-900"
+              >Manage Companies</span
+            >
+          </button>
+
+          <button
+            onclick="viewReports()"
+            class="flex flex-col items-center p-6 bg-indigo-50 hover:bg-indigo-100 rounded-lg border transition-colors w-full h-32 justify-center"
+          >
+            <i class="fas fa-chart-line text-3xl text-indigo-600 mb-3"></i>
+            <span class="text-base font-medium text-gray-900"
+              >Generate Report</span
+            >
+          </button>
+
+          <button
+            onclick="systemMaintenance()"
+            class="flex flex-col items-center p-6 bg-red-50 hover:bg-red-100 rounded-lg border transition-colors w-full h-32 justify-center"
+          >
+            <i class="fas fa-tools text-3xl text-red-600 mb-3"></i>
+            <span class="text-base font-medium text-gray-900">Maintenance</span>
+          </button>
+        </div>
+        </div>
+      </div>
+
+      <!-- Management Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+        <!-- User Management -->
+        <div
+          class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer"
+          onclick="navigateTo('/admin/user-management.html')"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-4xl text-blue-600">
+              <i class="fas fa-users-cog"></i>
+            </div>
+            <div
+              class="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium"
+            >
+              PRIMARY
+            </div>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            User Management
+          </h3>
+          <p class="text-gray-700 text-sm mb-4">
+            Manage users across all storage companies and client businesses
+          </p>
+          <div class="flex items-center text-sm text-blue-700">
+            <i class="fas fa-arrow-right mr-2"></i>
+            Manage Users
+          </div>
+        </div>
+
+        <!-- Company Management -->
+        <div
+          class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer"
+          onclick="navigateTo('/admin/company-management.html')"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-4xl text-purple-600">
+              <i class="fas fa-building"></i>
+            </div>
+            <div
+              class="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium"
+            >
+              CORE
+            </div>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            Storage Companies
+          </h3>
+          <p class="text-gray-700 text-sm mb-4">
+            Manage storage company accounts, billing, and configurations
+          </p>
+          <div class="flex items-center text-sm text-purple-700">
+            <i class="fas fa-arrow-right mr-2"></i>
+            Manage Companies
+          </div>
+        </div>
+
+        <!-- System Configuration -->
+        <div
+          class="bg-gradient-to-br from-red-50 to-red-100 rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer"
+          onclick="navigateTo('/system-config.html')"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-4xl text-red-600">
+              <i class="fas fa-cogs"></i>
+            </div>
+            <div
+              class="bg-red-600 text-white px-3 py-1 rounded-full text-xs font-medium"
+            >
+              SYSTEM
+            </div>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            System Settings
+          </h3>
+          <p class="text-gray-700 text-sm mb-4">
+            Configure global platform settings and security policies
+          </p>
+          <div class="flex items-center text-sm text-red-700">
+            <i class="fas fa-arrow-right mr-2"></i>
+            System Config
+          </div>
+        </div>
+
+        <!-- Analytics & Reports -->
+        <div
+          class="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer"
+          onclick="navigateTo('/analytics.html')"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-4xl text-green-600">
+              <i class="fas fa-chart-bar"></i>
+            </div>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            Platform Analytics
+          </h3>
+          <p class="text-gray-700 text-sm mb-4">
+            View platform-wide metrics, usage statistics, and reports
+          </p>
+          <div class="flex items-center text-sm text-green-700">
+            <i class="fas fa-arrow-right mr-2"></i>
+            View Analytics
+          </div>
+        </div>
+
+        <!-- Audit Logs -->
+        <div
+          class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer"
+          onclick="navigateTo('/audit-logs.html')"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-4xl text-indigo-600">
+              <i class="fas fa-clipboard-list"></i>
+            </div>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Audit Logs</h3>
+          <p class="text-gray-700 text-sm mb-4">
+            Monitor system activities and security events
+          </p>
+          <div class="flex items-center text-sm text-indigo-700">
+            <i class="fas fa-arrow-right mr-2"></i>
+            View Logs
+          </div>
+        </div>
+
+        <!-- Security Center -->
+        <div
+          class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow-sm border p-6 hover:shadow-md transition-shadow cursor-pointer"
+          onclick="navigateTo('/security-center.html')"
+        >
+          <div class="flex items-center justify-between mb-4">
+            <div class="text-4xl text-yellow-600">
+              <i class="fas fa-shield-alt"></i>
+            </div>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
+            Security Center
+          </h3>
+          <p class="text-gray-700 text-sm mb-4">
+            Manage security policies, 2FA settings, and threat monitoring
+          </p>
+          <div class="flex items-center text-sm text-yellow-700">
+            <i class="fas fa-arrow-right mr-2"></i>
+            Security Settings
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activity & System Status -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Recent Admin Activities -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <i class="fas fa-history mr-2 text-blue-600"></i>Recent Admin
+              Activities
+            </h3>
+            <button
+              onclick="navigateTo('/audit-logs.html')"
+              class="text-blue-600 hover:text-blue-700 text-sm"
+            >
+              View All <i class="fas fa-arrow-right ml-1"></i>
+            </button>
+          </div>
+          <div id="recent-activities" class="space-y-3">
+            <div class="text-center py-8 text-gray-500">
+              <i class="fas fa-clipboard-list text-2xl mb-2"></i>
+              <p>Loading recent activities...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- System Health -->
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">
+              <i class="fas fa-heartbeat mr-2 text-green-600"></i>System Health
+            </h3>
+            <span
+              class="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full font-medium"
+              id="system-status"
+            >
+              <i class="fas fa-circle mr-1"></i>All Systems Operational
+            </span>
+          </div>
+          <div class="space-y-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Database Connection</span>
+              <span class="text-green-600 text-sm font-medium">
+                <i class="fas fa-check-circle mr-1"></i>Connected
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">API Response Time</span>
+              <span
+                class="text-green-600 text-sm font-medium"
+                id="api-response-time"
+              >
+                45ms
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Active Connections</span>
+              <span
+                class="text-blue-600 text-sm font-medium"
+                id="active-connections"
+              >
+                --
+              </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Memory Usage</span>
+              <span class="text-yellow-600 text-sm font-medium"> 45% </span>
+            </div>
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-600">Disk Space</span>
+              <span class="text-green-600 text-sm font-medium">
+                78% Available
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="message-container" class="hidden fixed top-4 right-4 z-50">
+      <div id="message" class="p-4 rounded-lg shadow-lg max-w-md"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "/api";
+      let currentUser = null;
+
+      // Get auth token
+      function getAuthToken() {
+        return localStorage.getItem("guardian_access_token");
+      }
+
+      // Show message
+      function showMessage(message, type = "error") {
+        const container = document.getElementById("message-container");
+        const messageEl = document.getElementById("message");
+
+        messageEl.textContent = message;
+
+        let className = "p-4 rounded-lg shadow-lg max-w-md ";
+        switch (type) {
+          case "success":
+            className += "bg-green-100 text-green-800 border border-green-200";
+            break;
+          case "info":
+            className += "bg-blue-100 text-blue-800 border border-blue-200";
+            break;
+          case "warning":
+            className +=
+              "bg-yellow-100 text-yellow-800 border border-yellow-200";
+            break;
+          default:
+            className += "bg-red-100 text-red-800 border border-red-200";
+        }
+
+        messageEl.className = className;
+        container.classList.remove("hidden");
+
+        setTimeout(() => container.classList.add("hidden"), 5000);
+      }
+
+      // Load current user info
+      async function loadCurrentUser() {
+        try {
+          const token = getAuthToken();
+          if (!token) {
+            window.location.href = "/";
+            return;
+          }
+
+          const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+
+          if (!response.ok) throw new Error("Authentication failed");
+
+          const data = await response.json();
+          currentUser = data.data.user;
+
+          // Verify user is GUARDIAN admin
+          if (currentUser.role !== "guardian-admin") {
+            showMessage("Access denied. GUARDIAN admin privileges required.");
+            setTimeout(() => (window.location.href = "/dashboard.html"), 2000);
+            return;
+          }
+
+          // Update user info in header
+          const initials = (
+            currentUser.firstName[0] + currentUser.lastName[0]
+          ).toUpperCase();
+          document.getElementById(
+            "user-name"
+          ).textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+          document.getElementById(
+            "user-full-name"
+          ).textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+          document.getElementById("user-email").textContent = currentUser.email;
+
+          // Update avatars with initials
+          document.getElementById("user-avatar").textContent = initials;
+          document.getElementById("user-avatar-large").textContent = initials;
+
+          document.getElementById(
+            "welcome-title"
+          ).textContent = `Welcome back, ${currentUser.firstName}`;
+
+          // Load platform statistics
+          loadPlatformStats();
+          loadRecentActivities();
+        } catch (error) {
+          console.error("Failed to load user info:", error);
+          localStorage.removeItem("guardian_access_token");
+          window.location.href = "/";
+        }
+      }
+
+      // Load platform statistics
+      async function loadPlatformStats() {
+        try {
+          const token = getAuthToken();
+
+          // Load users count
+          const usersResponse = await fetch(`${API_BASE_URL}/users?limit=1`, {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+
+          if (usersResponse.ok) {
+            const usersData = await usersResponse.json();
+            document.getElementById("total-users").textContent =
+              usersData.data.pagination.total;
+          }
+
+          // Set placeholder values for other stats
+          document.getElementById("total-companies").textContent = "0";
+          document.getElementById("active-sessions").textContent = "1";
+          document.getElementById("system-alerts").textContent = "0";
+          document.getElementById("active-connections").textContent = "1";
+        } catch (error) {
+          console.error("Failed to load platform stats:", error);
+        }
+      }
+
+      // Load recent activities (placeholder)
+      function loadRecentActivities() {
+        const activitiesHtml = `
+                <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded">
+                    <div class="bg-green-100 rounded-full p-1">
+                        <i class="fas fa-user-plus text-green-600 text-xs"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-900">GUARDIAN admin created</p>
+                        <p class="text-xs text-gray-600">${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded">
+                    <div class="bg-blue-100 rounded-full p-1">
+                        <i class="fas fa-sign-in-alt text-blue-600 text-xs"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-900">Admin login successful</p>
+                        <p class="text-xs text-gray-600">${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+                <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded">
+                    <div class="bg-purple-100 rounded-full p-1">
+                        <i class="fas fa-cog text-purple-600 text-xs"></i>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm text-gray-900">Platform initialized</p>
+                        <p class="text-xs text-gray-600">${new Date().toLocaleString()}</p>
+                    </div>
+                </div>
+            `;
+
+        document.getElementById("recent-activities").innerHTML = activitiesHtml;
+      }
+
+      // Navigation functions
+      function navigateTo(path) {
+        window.location.href = path;
+      }
+
+      // Quick action functions
+      function createUser() {
+        navigateTo("/admin/user-management.html");
+      }
+
+      function createCompany() {
+        navigateTo("/admin/company-management.html");
+      }
+
+      function setup2FA() {
+        navigateTo("/2fa-setup.html");
+      }
+
+      function viewReports() {
+        showMessage("Analytics and reporting feature coming soon!", "info");
+      }
+
+      function systemMaintenance() {
+        showMessage("System maintenance tools coming soon!", "info");
+      }
+
+      // User Menu Functions
+      function toggleUserMenu() {
+        const menu = document.getElementById("user-menu");
+        const chevron = document.getElementById("user-menu-chevron");
+
+        if (menu.classList.contains("hidden")) {
+          menu.classList.remove("hidden");
+          chevron.style.transform = "rotate(180deg)";
+        } else {
+          menu.classList.add("hidden");
+          chevron.style.transform = "rotate(0deg)";
+        }
+      }
+
+      // Close user menu when clicking outside
+      document.addEventListener("click", function (event) {
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        if (
+          !userMenuButton.contains(event.target) &&
+          !userMenu.contains(event.target)
+        ) {
+          userMenu.classList.add("hidden");
+          document.getElementById("user-menu-chevron").style.transform =
+            "rotate(0deg)";
+        }
+      });
+
+      // User Option Functions
+      function viewProfile() {
+        toggleUserMenu();
+        showMessage("Profile management feature coming soon!", "info");
+      }
+
+      function accountSecurity() {
+        toggleUserMenu();
+        showMessage("Account security dashboard coming soon!", "info");
+      }
+
+      function changePassword() {
+        toggleUserMenu();
+
+        // Show a simple password change modal (placeholder)
+        const newPassword = prompt(
+          "Enter your new password (minimum 8 characters):"
+        );
+        if (newPassword && newPassword.length >= 8) {
+          showMessage("Password change feature coming soon!", "info");
+        } else if (newPassword !== null) {
+          showMessage("Password must be at least 8 characters long.", "error");
+        }
+      }
+
+      function userPreferences() {
+        toggleUserMenu();
+        showMessage("User preferences panel coming soon!", "info");
+      }
+
+      // Logout
+      function logout() {
+        toggleUserMenu();
+
+        if (confirm("Are you sure you want to sign out?")) {
+          localStorage.removeItem("guardian_access_token");
+          localStorage.removeItem("guardian_refresh_token");
+          localStorage.removeItem("guardian_user");
+          window.location.href = "/";
+        }
+      }
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        loadCurrentUser();
+      });
+    </script>
+  </body>
+</html>

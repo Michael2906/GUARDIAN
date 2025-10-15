@@ -81,10 +81,20 @@ const { Company, User, InventoryItem } = require("./models");
 // API Routes
 const registrationRoutes = require("./routes/registration");
 const adminRoutes = require("./routes/admin");
+const authRoutes = require("./routes/auth");
+const twoFactorRoutes = require("./routes/twoFactor");
+const pushNotificationRoutes = require("./routes/pushNotifications");
+const userRoutes = require("./routes/users");
+const companyRoutes = require("./routes/companies");
 
 // Mount routes
 app.use("/api/registration", registrationRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/2fa", twoFactorRoutes);
+app.use("/api/push", pushNotificationRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/companies", companyRoutes);
 
 // Debug route
 app.get("/api/debug", (req, res) => {
@@ -137,6 +147,19 @@ app.get("/api/test/models", async (req, res) => {
 // Default route - serve login page
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
+});
+
+// Redirect old admin paths to new admin folder structure
+app.get("/admin-dashboard.html", (req, res) => {
+  res.redirect(301, "/admin/admin-dashboard.html");
+});
+
+app.get("/user-management.html", (req, res) => {
+  res.redirect(301, "/admin/user-management.html");
+});
+
+app.get("/company-management.html", (req, res) => {
+  res.redirect(301, "/admin/company-management.html");
 });
 
 // 404 handler

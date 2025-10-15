@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema(
     userType: {
       type: String,
       enum: [
+        "guardian-admin",
         "storage-admin",
         "storage-manager",
         "storage-employee",
@@ -19,11 +20,13 @@ const userSchema = new mongoose.Schema(
       index: true,
     },
 
-    // Storage Company Association (Always Required)
+    // Storage Company Association (Required except for GUARDIAN admins)
     storageCompanyId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "StorageCompany",
-      required: true,
+      required: function () {
+        return this.userType !== "guardian-admin";
+      },
       index: true,
     },
 
@@ -147,8 +150,18 @@ const userSchema = new mongoose.Schema(
     twoFactorAuth: {
       enabled: { type: Boolean, default: false },
       secret: String, // TOTP secret
-      backupCodes: [String], // Single-use backup codes
+      backupCodes: [String], // Single-use backup codes (hashed)
       lastUsedAt: Date,
+
+      // Admin management tracking
+      enabledAt: Date,
+      enabledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      disabledAt: Date,
+      disabledBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      disabledReason: String,
+      resetAt: Date,
+      resetBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+      resetReason: String,
     },
 
     // User Preferences
@@ -244,6 +257,13 @@ userSchema.pre("save", function (next) {
   if (this.isStorageUser() && this.clientBusinessId) {
     return next(
       new Error("Storage company users should not have a clientBusinessId")
+    );
+  }
+
+  // Validate that GUARDIAN admins don't have clientBusinessId
+  if (this.isGuardianAdmin() && this.clientBusinessId) {
+    return next(
+      new Error("GUARDIAN admins should not have a clientBusinessId")
     );
   }
 
@@ -367,6 +387,10 @@ userSchema.methods.canAccessWarehouse = function (warehouseId) {
   );
 };
 
+userSchema.methods.isGuardianAdmin = function () {
+  return this.userType === "guardian-admin";
+};
+
 userSchema.methods.isStorageUser = function () {
   return ["storage-admin", "storage-manager", "storage-employee"].includes(
     this.userType
@@ -382,6 +406,39 @@ userSchema.methods.isClientUser = function () {
 // Set default permissions based on user type
 userSchema.methods.setDefaultPermissions = function () {
   const defaults = {
+    "guardian-admin": {
+      storageOperations: {
+        viewAllClients: true,
+        manageClients: true,
+        viewInventory: true,
+        manageInventory: true,
+        processReceiving: true,
+        processShipping: true,
+        manageBilling: true,
+      },
+      clientOperations: {
+        viewOwnInventory: true,
+        submitOrders: true,
+        viewReports: true,
+        exportData: true,
+        viewBilling: true,
+        manageUsers: true,
+      },
+      administration: {
+        manageUsers: true,
+        viewAllData: true,
+        modifySettings: true,
+        accessReports: true,
+        manageIntegrations: true,
+      },
+      systemAccess: {
+        mobileApp: true,
+        webPortal: true,
+        apiAccess: true,
+        bulkOperations: true,
+      },
+    },
+
     "storage-admin": {
       storageOperations: {
         viewAllClients: true,

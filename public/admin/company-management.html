@@ -1,0 +1,1552 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Storage Company Management - GUARDIAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body class="bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <div class="text-2xl font-bold text-purple-600">
+              <i class="fas fa-shield-alt mr-2"></i>GUARDIAN
+            </div>
+            <span class="text-gray-400">|</span>
+            <h1 class="text-xl font-semibold text-gray-800">
+              Storage Company Management
+            </h1>
+          </div>
+          <div class="flex items-center space-x-4">
+            <!-- User Options Dropdown -->
+            <div class="relative">
+              <button
+                id="user-menu-button"
+                onclick="toggleUserMenu()"
+                class="flex items-center space-x-2 text-sm text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-purple-500 rounded-lg px-3 py-2 transition-colors"
+              >
+                <div class="flex items-center space-x-2">
+                  <div
+                    class="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center text-xs font-medium"
+                    id="user-avatar"
+                  >
+                    <i class="fas fa-user"></i>
+                  </div>
+                  <span id="user-name" class="font-medium">Loading...</span>
+                  <i
+                    class="fas fa-chevron-down transition-transform"
+                    id="user-menu-chevron"
+                  ></i>
+                </div>
+              </button>
+
+              <!-- Dropdown Menu -->
+              <div
+                id="user-menu"
+                class="hidden absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+              >
+                <!-- User Info Header -->
+                <div class="px-4 py-3 border-b border-gray-100">
+                  <div class="flex items-center space-x-3">
+                    <div
+                      class="bg-purple-600 text-white rounded-full w-10 h-10 flex items-center justify-center text-sm font-medium"
+                      id="user-avatar-large"
+                    >
+                      <i class="fas fa-user"></i>
+                    </div>
+                    <div>
+                      <p
+                        class="text-sm font-medium text-gray-900"
+                        id="user-full-name"
+                      >
+                        Loading...
+                      </p>
+                      <p class="text-xs text-gray-600" id="user-email">
+                        Loading...
+                      </p>
+                      <span
+                        class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 mt-1"
+                        id="user-role-badge"
+                      >
+                        <i class="fas fa-crown mr-1"></i>GUARDIAN Admin
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Menu Items -->
+                <div class="py-2">
+                  <!-- Account Settings -->
+                  <button
+                    onclick="viewProfile()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-user-circle text-gray-400 mr-3 w-4"></i>
+                    View Profile
+                  </button>
+
+                  <!-- Account Security -->
+                  <button
+                    onclick="accountSecurity()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-shield-alt text-gray-400 mr-3 w-4"></i>
+                    Account Security
+                  </button>
+
+                  <!-- 2FA Setup -->
+                  <button
+                    onclick="setup2FA()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-mobile-alt text-gray-400 mr-3 w-4"></i>
+                    Two-Factor Authentication
+                  </button>
+
+                  <!-- Change Password -->
+                  <button
+                    onclick="changePassword()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-key text-gray-400 mr-3 w-4"></i>
+                    Change Password
+                  </button>
+
+                  <!-- Preferences -->
+                  <button
+                    onclick="userPreferences()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-cog text-gray-400 mr-3 w-4"></i>
+                    Preferences
+                  </button>
+                </div>
+
+                <div class="border-t border-gray-100 py-2">
+                  <!-- Navigation Items -->
+                  <button
+                    onclick="navigateTo('/admin/admin-dashboard.html')"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i
+                      class="fas fa-tachometer-alt text-purple-500 mr-3 w-4"
+                    ></i>
+                    Admin Dashboard
+                  </button>
+
+                  <button
+                    onclick="navigateTo('/admin/user-management.html')"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-users text-purple-500 mr-3 w-4"></i>
+                    User Management
+                  </button>
+
+                  <button
+                    onclick="navigateTo('/dashboard.html')"
+                    class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <i class="fas fa-home text-gray-500 mr-3 w-4"></i>
+                    User Dashboard
+                  </button>
+                </div>
+
+                <div class="border-t border-gray-100 py-2">
+                  <!-- Logout -->
+                  <button
+                    onclick="logout()"
+                    class="w-full flex items-center px-4 py-2 text-sm text-red-600 hover:bg-red-50 hover:text-red-700"
+                  >
+                    <i class="fas fa-sign-out-alt text-red-500 mr-3 w-4"></i>
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <!-- Page Header -->
+      <div class="mb-8">
+        <div class="flex items-center justify-between">
+          <div>
+            <h1 class="text-3xl font-bold text-gray-900">
+              Storage Company Management
+            </h1>
+            <p class="text-gray-600 mt-2">
+              Manage 3PL providers and storage companies on the GUARDIAN
+              platform
+            </p>
+          </div>
+          <button
+            onclick="openCreateCompanyModal()"
+            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <i class="fas fa-plus mr-2"></i>Add New Company
+          </button>
+        </div>
+      </div>
+
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-purple-600">
+              <i class="fas fa-building"></i>
+            </div>
+            <div class="text-right">
+              <div
+                class="text-2xl font-bold text-gray-900"
+                id="total-companies"
+              >
+                --
+              </div>
+              <div class="text-sm text-gray-600">Total Companies</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-green-600">
+              <i class="fas fa-check-circle"></i>
+            </div>
+            <div class="text-right">
+              <div
+                class="text-2xl font-bold text-gray-900"
+                id="active-companies"
+              >
+                --
+              </div>
+              <div class="text-sm text-gray-600">Active Companies</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-yellow-600">
+              <i class="fas fa-pause-circle"></i>
+            </div>
+            <div class="text-right">
+              <div
+                class="text-2xl font-bold text-gray-900"
+                id="pending-companies"
+              >
+                --
+              </div>
+              <div class="text-sm text-gray-600">Pending Approval</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-3xl text-blue-600">
+              <i class="fas fa-users"></i>
+            </div>
+            <div class="text-right">
+              <div
+                class="text-2xl font-bold text-gray-900"
+                id="total-company-users"
+              >
+                --
+              </div>
+              <div class="text-sm text-gray-600">Company Users</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white rounded-lg shadow-sm border p-6 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >Search Companies</label
+            >
+            <input
+              type="text"
+              id="search-input"
+              placeholder="Company name or email..."
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              onkeyup="debounceSearch()"
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >Company Type</label
+            >
+            <select
+              id="company-type-filter"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              onchange="loadCompanies()"
+            >
+              <option value="">All Types</option>
+              <option value="3pl-provider">3PL Provider</option>
+              <option value="self-storage">Self Storage</option>
+              <option value="warehouse-operator">Warehouse Operator</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >Status</label
+            >
+            <select
+              id="status-filter"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              onchange="loadCompanies()"
+            >
+              <option value="">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="email-verified">Email Verified</option>
+              <option value="setup-completed">Setup Completed</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2"
+              >Billing Status</label
+            >
+            <select
+              id="billing-filter"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              onchange="loadCompanies()"
+            >
+              <option value="">All Billing</option>
+              <option value="current">Current</option>
+              <option value="overdue">Overdue</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button
+              onclick="clearFilters()"
+              class="w-full px-3 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <i class="fas fa-times mr-2"></i>Clear Filters
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Companies Table -->
+      <div class="bg-white rounded-lg shadow-sm border">
+        <div class="px-6 py-4 border-b border-gray-200">
+          <h3 class="text-lg font-medium text-gray-900">Storage Companies</h3>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading-state" class="p-8 text-center">
+          <i class="fas fa-spinner fa-spin text-2xl text-gray-400 mb-4"></i>
+          <p class="text-gray-600">Loading companies...</p>
+        </div>
+
+        <!-- Empty State -->
+        <div id="empty-state" class="hidden p-8 text-center">
+          <i class="fas fa-building text-4xl text-gray-300 mb-4"></i>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">
+            No companies found
+          </h3>
+          <p class="text-gray-600 mb-4">
+            Get started by adding your first storage company.
+          </p>
+          <button
+            onclick="openCreateCompanyModal()"
+            class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 transition-colors"
+          >
+            <i class="fas fa-plus mr-2"></i>Add Company
+          </button>
+        </div>
+
+        <!-- Table -->
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+              <tr>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Company
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Type
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Plan
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Status
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Users
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Billing
+                </th>
+                <th
+                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Created
+                </th>
+                <th
+                  class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody
+              id="companies-table-body"
+              class="bg-white divide-y divide-gray-200"
+            >
+              <!-- Companies will be populated here -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        <div
+          id="pagination-container"
+          class="hidden px-6 py-4 border-t border-gray-200"
+        >
+          <div class="flex items-center justify-between">
+            <div class="text-sm text-gray-700">
+              Showing <span id="showing-from">1</span> to
+              <span id="showing-to">20</span> of
+              <span id="total-results">0</span> results
+            </div>
+            <div id="pagination-buttons" class="flex items-center space-x-2">
+              <!-- Pagination buttons will be populated here -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create/Edit Company Modal -->
+    <div
+      id="company-modal"
+      class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50"
+    >
+      <div
+        class="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white"
+      >
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-lg font-medium text-gray-900" id="modal-title">
+            Add New Storage Company
+          </h3>
+          <button
+            onclick="closeCompanyModal()"
+            class="text-gray-400 hover:text-gray-600"
+          >
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <form id="company-form" class="space-y-6">
+          <input type="hidden" id="company-id" />
+
+          <!-- Basic Information -->
+          <div>
+            <h4 class="text-md font-medium text-gray-900 mb-4">
+              Basic Information
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Company Name *</label
+                >
+                <input
+                  type="text"
+                  id="company-name"
+                  required
+                  maxlength="100"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="Enter company name"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Company Slug *</label
+                >
+                <input
+                  type="text"
+                  id="company-slug"
+                  required
+                  pattern="^[a-z0-9-]+$"
+                  maxlength="50"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="company-slug"
+                />
+                <p class="text-xs text-gray-500 mt-1">
+                  Lowercase letters, numbers, and hyphens only
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div>
+            <h4 class="text-md font-medium text-gray-900 mb-4">
+              Contact Information
+            </h4>
+            <div class="space-y-4">
+              <!-- POC Name - Full Width -->
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Primary Contact Name *</label
+                >
+                <input
+                  type="text"
+                  id="company-contact-name"
+                  required
+                  maxlength="100"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="John Smith"
+                />
+              </div>
+              <!-- Email and Phone - Side by Side -->
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2"
+                    >Email Address *</label
+                  >
+                  <input
+                    type="email"
+                    id="company-email"
+                    required
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="contact@company.com"
+                  />
+                </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Phone Number</label
+                >
+                <input
+                  type="tel"
+                  id="company-phone"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Company Details -->
+          <div>
+            <h4 class="text-md font-medium text-gray-900 mb-4">
+              Company Details
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Company Type *</label
+                >
+                <select
+                  id="company-type"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Select type</option>
+                  <option value="3pl-provider">3PL Provider</option>
+                  <option value="self-storage">Self Storage</option>
+                  <option value="warehouse-operator">Warehouse Operator</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >GUARDIAN Plan *</label
+                >
+                <select
+                  id="company-plan"
+                  required
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Select plan</option>
+                  <option value="starter">Starter</option>
+                  <option value="professional">Professional</option>
+                  <option value="enterprise">Enterprise</option>
+                  <option value="white-label">White Label</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Status</label
+                >
+                <select
+                  id="company-status"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="email-verified">Email Verified</option>
+                  <option value="setup-completed">Setup Completed</option>
+                  <option value="active">Active</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Address Information -->
+          <div>
+            <h4 class="text-md font-medium text-gray-900 mb-4">
+              Address Information
+            </h4>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Street Address</label
+                >
+                <input
+                  type="text"
+                  id="company-address-street"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="123 Main Street"
+                />
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2"
+                    >City</label
+                  >
+                  <input
+                    type="text"
+                    id="company-address-city"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="City"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2"
+                    >State/Province</label
+                  >
+                  <input
+                    type="text"
+                    id="company-address-state"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="State"
+                  />
+                </div>
+                <div>
+                  <label class="block text-sm font-medium text-gray-700 mb-2"
+                    >ZIP/Postal Code</label
+                  >
+                  <input
+                    type="text"
+                    id="company-address-zip"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                    placeholder="12345"
+                  />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Country</label
+                >
+                <input
+                  type="text"
+                  id="company-address-country"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                  placeholder="United States"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Form Actions -->
+          <div class="flex items-center justify-end space-x-3 pt-6 border-t">
+            <button
+              type="button"
+              onclick="closeCompanyModal()"
+              class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              id="save-company-btn"
+              class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <span id="save-company-text">Create Company</span>
+              <i
+                id="save-company-spinner"
+                class="fas fa-spinner fa-spin ml-2 hidden"
+              ></i>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div id="message-container" class="hidden fixed top-4 right-4 z-50">
+      <div id="message" class="p-4 rounded-lg shadow-lg max-w-md"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "/api";
+      let currentUser = null;
+      let currentPage = 1;
+      let searchTimeout = null;
+
+      // Get auth token
+      function getAuthToken() {
+        return localStorage.getItem("guardian_access_token");
+      }
+
+      // Show message
+      function showMessage(message, type = "error") {
+        const container = document.getElementById("message-container");
+        const messageEl = document.getElementById("message");
+
+        messageEl.textContent = message;
+
+        let className = "p-4 rounded-lg shadow-lg max-w-md ";
+        switch (type) {
+          case "success":
+            className += "bg-green-100 text-green-800 border border-green-200";
+            break;
+          case "info":
+            className += "bg-blue-100 text-blue-800 border border-blue-200";
+            break;
+          case "warning":
+            className +=
+              "bg-yellow-100 text-yellow-800 border border-yellow-200";
+            break;
+          default:
+            className += "bg-red-100 text-red-800 border border-red-200";
+        }
+
+        messageEl.className = className;
+        container.classList.remove("hidden");
+
+        setTimeout(() => container.classList.add("hidden"), 5000);
+      }
+
+      // Load current user info
+      async function loadCurrentUser() {
+        try {
+          const token = getAuthToken();
+          console.log("Auth token:", token ? "Found" : "Not found");
+          if (!token) {
+            console.log("No token found, redirecting to login");
+            window.location.href = "/";
+            return;
+          }
+
+          console.log("Calling auth/verify endpoint");
+          const response = await fetch(`${API_BASE_URL}/auth/verify`, {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+
+          console.log("Auth verify response status:", response.status);
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.error("Auth verify failed:", errorData);
+            throw new Error("Authentication failed");
+          }
+
+          const data = await response.json();
+          console.log("Auth verify response data:", data);
+          currentUser = data.data.user;
+
+          // Verify user is GUARDIAN admin
+          console.log("Current user role:", currentUser.role);
+          if (currentUser.role !== "guardian-admin") {
+            console.log("User is not guardian-admin, redirecting");
+            showMessage("Access denied. GUARDIAN admin privileges required.");
+            setTimeout(
+              () => (window.location.href = "/admin/admin-dashboard.html"),
+              2000
+            );
+            return;
+          }
+
+          // Update user info in header dropdown
+          const initials = (
+            currentUser.firstName[0] + currentUser.lastName[0]
+          ).toUpperCase();
+          document.getElementById(
+            "user-name"
+          ).textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+          document.getElementById(
+            "user-full-name"
+          ).textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+          document.getElementById("user-email").textContent = currentUser.email;
+
+          // Update avatars with initials
+          document.getElementById("user-avatar").textContent = initials;
+          document.getElementById("user-avatar-large").textContent = initials;
+
+          // Load companies and statistics
+          console.log("User verified, loading companies and statistics");
+          loadCompanies();
+          loadStatistics();
+        } catch (error) {
+          console.error("Failed to load user info:", error);
+          console.error("Error details:", error.message);
+          localStorage.removeItem("guardian_access_token");
+          window.location.href = "/";
+        }
+      }
+
+      // User Menu Functions
+      function toggleUserMenu() {
+        const menu = document.getElementById("user-menu");
+        const chevron = document.getElementById("user-menu-chevron");
+
+        if (menu.classList.contains("hidden")) {
+          menu.classList.remove("hidden");
+          chevron.style.transform = "rotate(180deg)";
+        } else {
+          menu.classList.add("hidden");
+          chevron.style.transform = "rotate(0deg)";
+        }
+      }
+
+      // Close user menu when clicking outside
+      document.addEventListener("click", function (event) {
+        const userMenuButton = document.getElementById("user-menu-button");
+        const userMenu = document.getElementById("user-menu");
+
+        if (
+          !userMenuButton.contains(event.target) &&
+          !userMenu.contains(event.target)
+        ) {
+          userMenu.classList.add("hidden");
+          document.getElementById("user-menu-chevron").style.transform =
+            "rotate(0deg)";
+        }
+      });
+
+      // User Option Functions
+      function viewProfile() {
+        toggleUserMenu();
+        showMessage("Profile management feature coming soon!", "info");
+      }
+
+      function accountSecurity() {
+        toggleUserMenu();
+        showMessage("Account security dashboard coming soon!", "info");
+      }
+
+      function setup2FA() {
+        toggleUserMenu();
+        navigateTo("/2fa-setup.html");
+      }
+
+      function changePassword() {
+        toggleUserMenu();
+
+        const newPassword = prompt(
+          "Enter your new password (minimum 8 characters):"
+        );
+        if (newPassword && newPassword.length >= 8) {
+          showMessage("Password change feature coming soon!", "info");
+        } else if (newPassword !== null) {
+          showMessage("Password must be at least 8 characters long.", "error");
+        }
+      }
+
+      function userPreferences() {
+        toggleUserMenu();
+        showMessage("User preferences panel coming soon!", "info");
+      }
+
+      function navigateTo(path) {
+        window.location.href = path;
+      }
+
+      // Logout
+      function logout() {
+        toggleUserMenu();
+
+        if (confirm("Are you sure you want to sign out?")) {
+          localStorage.removeItem("guardian_access_token");
+          localStorage.removeItem("guardian_refresh_token");
+          localStorage.removeItem("guardian_user");
+          window.location.href = "/";
+        }
+      }
+
+      // Load statistics
+      async function loadStatistics() {
+        try {
+          const token = getAuthToken();
+          const response = await fetch(`${API_BASE_URL}/companies/statistics`, {
+            headers: { "Authorization": `Bearer ${token}` },
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success) {
+              document.getElementById("total-companies").textContent =
+                data.data.totalCompanies;
+              document.getElementById("active-companies").textContent =
+                data.data.activeCompanies;
+              document.getElementById("pending-companies").textContent =
+                data.data.pendingCompanies;
+              document.getElementById("total-company-users").textContent =
+                data.data.totalCompanyUsers;
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load statistics:", error);
+          // Keep placeholder values on error
+          document.getElementById("total-companies").textContent = "0";
+          document.getElementById("active-companies").textContent = "0";
+          document.getElementById("pending-companies").textContent = "0";
+          document.getElementById("total-company-users").textContent = "0";
+        }
+      }
+
+      // Load companies
+      async function loadCompanies(page = 1) {
+        try {
+          const tbody = document.getElementById("companies-table-body");
+          const loadingState = document.getElementById("loading-state");
+          const emptyState = document.getElementById("empty-state");
+          const paginationContainer = document.getElementById(
+            "pagination-container"
+          );
+
+          loadingState.classList.remove("hidden");
+          emptyState.classList.add("hidden");
+          paginationContainer.classList.add("hidden");
+          tbody.innerHTML = "";
+
+          currentPage = page;
+          const token = getAuthToken();
+
+          if (!token) {
+            throw new Error(
+              "Authentication token not found. Please log in again."
+            );
+          }
+
+          // Build query parameters
+          const params = new URLSearchParams();
+          params.append("page", page);
+          params.append("limit", "20");
+
+          const search = document.getElementById("search-input")?.value;
+          if (search) params.append("search", search);
+
+          const companyType = document.getElementById(
+            "company-type-filter"
+          )?.value;
+          if (companyType) params.append("companyType", companyType);
+
+          const status = document.getElementById("status-filter")?.value;
+          if (status) params.append("status", status);
+
+          const billingStatus =
+            document.getElementById("billing-filter")?.value;
+          if (billingStatus) params.append("billingStatus", billingStatus);
+
+          console.log("Loading companies with params:", params.toString());
+
+          const response = await fetch(`${API_BASE_URL}/companies?${params}`, {
+            headers: {
+              "Authorization": `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          });
+
+          if (!response.ok) {
+            const errorData = await response
+              .json()
+              .catch(() => ({ error: "Network error" }));
+            throw new Error(
+              errorData.error ||
+                `HTTP ${response.status}: Failed to load companies`
+            );
+          }
+
+          const data = await response.json();
+
+          console.log("API Response received:", data);
+          console.log(
+            "Companies in response:",
+            data.data?.companies?.length || 0
+          );
+
+          if (data.success && data.data) {
+            console.log("Calling displayCompanies with:", data.data.companies);
+            displayCompanies(data.data.companies || []);
+            displayPagination(
+              data.data.pagination || { page: 1, pages: 1, total: 0 }
+            );
+          } else {
+            console.error("API response error:", data.error);
+            throw new Error(data.error || "Invalid response format");
+          }
+        } catch (error) {
+          console.error("Failed to load companies:", error);
+          showMessage(error.message || "Failed to load companies");
+
+          // Show empty state on error
+          const tbody = document.getElementById("companies-table-body");
+          const loadingState = document.getElementById("loading-state");
+          const emptyState = document.getElementById("empty-state");
+
+          loadingState.classList.add("hidden");
+          tbody.innerHTML = "";
+          emptyState.classList.remove("hidden");
+        }
+      }
+
+      // Search debounce
+      function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+          loadCompanies(1);
+        }, 300);
+      }
+
+      // Clear filters
+      function clearFilters() {
+        document.getElementById("search-input").value = "";
+        document.getElementById("company-type-filter").value = "";
+        document.getElementById("status-filter").value = "";
+        document.getElementById("billing-filter").value = "";
+        loadCompanies(1);
+      }
+
+      // Modal functions
+      function openCreateCompanyModal() {
+        document.getElementById("modal-title").textContent =
+          "Add New Storage Company";
+        document.getElementById("save-company-text").textContent =
+          "Create Company";
+        document.getElementById("company-form").reset();
+        document.getElementById("company-id").value = "";
+        document.getElementById("company-modal").classList.remove("hidden");
+      }
+
+      function closeCompanyModal() {
+        document.getElementById("company-modal").classList.add("hidden");
+        document.getElementById("company-form").reset();
+      }
+
+      // Display companies in table
+      function displayCompanies(companies) {
+        console.log("displayCompanies called with:", companies);
+        const tbody = document.getElementById("companies-table-body");
+        const loadingState = document.getElementById("loading-state");
+        const emptyState = document.getElementById("empty-state");
+
+        loadingState.classList.add("hidden");
+
+        if (companies.length === 0) {
+          console.log("No companies to display, showing empty state");
+          tbody.innerHTML = "";
+          emptyState.classList.remove("hidden");
+          return;
+        }
+
+        emptyState.classList.add("hidden");
+
+        tbody.innerHTML = companies
+          .map(
+            (company) => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0 h-10 w-10">
+                                <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                                    <span class="text-sm font-medium text-purple-600">
+                                        ${company.name
+                                          .substring(0, 2)
+                                          .toUpperCase()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ml-4">
+                                <div class="text-sm font-medium text-gray-900">${
+                                  company.name
+                                }</div>
+                                <div class="text-sm text-gray-500">${
+                                  company.email
+                                }</div>
+                                <div class="text-xs text-gray-400">${
+                                  company.slug
+                                }</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getCompanyTypeBadgeClass(
+                          company.companyType
+                        )}">
+                            ${formatCompanyType(company.companyType)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPlanBadgeClass(
+                          company.guardianPlan
+                        )}">
+                            ${formatPlan(company.guardianPlan)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeClass(
+                          company.status
+                        )}">
+                            ${formatStatus(company.status)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <div class="flex items-center">
+                            <i class="fas fa-users text-gray-400 mr-2"></i>
+                            ${company.userCount || 0} users
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getBillingBadgeClass(
+                          company.billing?.status
+                        )}">
+                            ${formatBillingStatus(company.billing?.status)}
+                        </span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        ${formatDate(company.createdAt)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div class="flex items-center justify-end space-x-2">
+                            <button
+                                onclick="editCompany('${company._id}')"
+                                class="text-blue-600 hover:text-blue-900 p-1"
+                                title="Edit company"
+                            >
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            ${
+                              company.status === "active"
+                                ? `<button
+                                    onclick="suspendCompany('${company._id}', '${company.name}')"
+                                    class="text-orange-600 hover:text-orange-900 p-1"
+                                    title="Suspend company"
+                                >
+                                    <i class="fas fa-pause"></i>
+                                </button>`
+                                : `<button
+                                    onclick="activateCompany('${company._id}', '${company.name}')"
+                                    class="text-green-600 hover:text-green-900 p-1"
+                                    title="Activate company"
+                                >
+                                    <i class="fas fa-play"></i>
+                                </button>`
+                            }
+                            <button
+                                onclick="deleteCompany('${company._id}', '${
+              company.name
+            }')"
+                                class="text-red-600 hover:text-red-900 p-1"
+                                title="Delete company"
+                            >
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>`
+          )
+          .join("");
+      }
+
+      // Display pagination
+      function displayPagination(pagination) {
+        const container = document.getElementById("pagination-container");
+        const buttonsContainer = document.getElementById("pagination-buttons");
+        const showingFrom = document.getElementById("showing-from");
+        const showingTo = document.getElementById("showing-to");
+        const totalResults = document.getElementById("total-results");
+
+        if (pagination.total === 0) {
+          container.classList.add("hidden");
+          return;
+        }
+
+        container.classList.remove("hidden");
+
+        // Update showing text
+        const from = (pagination.page - 1) * pagination.limit + 1;
+        const to = Math.min(
+          pagination.page * pagination.limit,
+          pagination.total
+        );
+        showingFrom.textContent = from;
+        showingTo.textContent = to;
+        totalResults.textContent = pagination.total;
+
+        // Generate pagination buttons
+        let paginationHTML = "";
+
+        // Previous button
+        if (pagination.page > 1) {
+          paginationHTML += `
+            <button onclick="loadCompanies(${pagination.page - 1})" 
+                    class="px-3 py-1 border border-gray-300 rounded-l-md bg-white text-sm text-gray-500 hover:bg-gray-50">
+                Previous
+            </button>`;
+        }
+
+        // Page numbers
+        const startPage = Math.max(1, pagination.page - 2);
+        const endPage = Math.min(pagination.pages, pagination.page + 2);
+
+        for (let i = startPage; i <= endPage; i++) {
+          paginationHTML += `
+            <button onclick="loadCompanies(${i})" 
+                    class="px-3 py-1 border-t border-b border-r border-gray-300 text-sm ${
+                      i === pagination.page
+                        ? "bg-blue-50 text-blue-600"
+                        : "bg-white text-gray-500 hover:bg-gray-50"
+                    }">
+                ${i}
+            </button>`;
+        }
+
+        // Next button
+        if (pagination.page < pagination.pages) {
+          paginationHTML += `
+            <button onclick="loadCompanies(${pagination.page + 1})" 
+                    class="px-3 py-1 border border-gray-300 rounded-r-md bg-white text-sm text-gray-500 hover:bg-gray-50">
+                Next
+            </button>`;
+        }
+
+        buttonsContainer.innerHTML = paginationHTML;
+      }
+
+      // Helper functions for formatting
+      function getCompanyTypeBadgeClass(type) {
+        switch (type) {
+          case "3pl-provider":
+            return "bg-blue-100 text-blue-800";
+          case "self-storage":
+            return "bg-green-100 text-green-800";
+          case "warehouse-operator":
+            return "bg-purple-100 text-purple-800";
+          default:
+            return "bg-gray-100 text-gray-800";
+        }
+      }
+
+      function formatCompanyType(type) {
+        switch (type) {
+          case "3pl-provider":
+            return "3PL Provider";
+          case "self-storage":
+            return "Self Storage";
+          case "warehouse-operator":
+            return "Warehouse Operator";
+          default:
+            return type;
+        }
+      }
+
+      function formatPlan(plan) {
+        if (!plan) return 'Unknown';
+        switch (plan) {
+          case "starter":
+            return "Starter";
+          case "professional":
+            return "Professional";
+          case "enterprise":
+            return "Enterprise";
+          case "white-label":
+            return "White Label";
+          default:
+            return plan;
+        }
+      }
+
+      function getPlanBadgeClass(plan) {
+        switch (plan) {
+          case "starter":
+            return "bg-gray-100 text-gray-800";
+          case "professional":
+            return "bg-blue-100 text-blue-800";
+          case "enterprise":
+            return "bg-purple-100 text-purple-800";
+          case "white-label":
+            return "bg-gold-100 text-gold-800";
+          default:
+            return "bg-gray-100 text-gray-800";
+        }
+      }
+
+      function getStatusBadgeClass(status) {
+        switch (status) {
+          case "active":
+            return "bg-green-100 text-green-800";
+          case "pending":
+            return "bg-yellow-100 text-yellow-800";
+          case "suspended":
+            return "bg-red-100 text-red-800";
+          case "inactive":
+            return "bg-gray-100 text-gray-800";
+          default:
+            return "bg-gray-100 text-gray-800";
+        }
+      }
+
+      function formatStatus(status) {
+        if (!status) return 'Unknown';
+        return status.charAt(0).toUpperCase() + status.slice(1);
+      }
+
+      function getBillingBadgeClass(status) {
+        switch (status) {
+          case "current":
+            return "bg-green-100 text-green-800";
+          case "overdue":
+            return "bg-red-100 text-red-800";
+          case "suspended":
+            return "bg-orange-100 text-orange-800";
+          default:
+            return "bg-gray-100 text-gray-800";
+        }
+      }
+
+      function formatBillingStatus(status) {
+        if (!status) return "Not Set";
+        return status.charAt(0).toUpperCase() + status.slice(1);
+      }
+
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+        });
+      }
+
+      // Company management functions
+      async function editCompany(companyId) {
+        showMessage("Edit company feature coming soon!", "info");
+      }
+
+      async function activateCompany(companyId, companyName) {
+        if (!confirm(`Are you sure you want to activate "${companyName}"?`))
+          return;
+
+        try {
+          const token = getAuthToken();
+          const response = await fetch(
+            `${API_BASE_URL}/companies/${companyId}/activate`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            showMessage("Company activated successfully!", "success");
+            loadCompanies(currentPage);
+            loadStatistics();
+          } else {
+            showMessage(data.error || "Failed to activate company");
+          }
+        } catch (error) {
+          console.error("Activate company error:", error);
+          showMessage("Failed to activate company");
+        }
+      }
+
+      async function suspendCompany(companyId, companyName) {
+        const reason = prompt(`Enter reason for suspending "${companyName}":`);
+        if (!reason) return;
+
+        try {
+          const token = getAuthToken();
+          const response = await fetch(
+            `${API_BASE_URL}/companies/${companyId}/suspend`,
+            {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ reason }),
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            showMessage("Company suspended successfully!", "success");
+            loadCompanies(currentPage);
+            loadStatistics();
+          } else {
+            showMessage(data.error || "Failed to suspend company");
+          }
+        } catch (error) {
+          console.error("Suspend company error:", error);
+          showMessage("Failed to suspend company");
+        }
+      }
+
+      async function deleteCompany(companyId, companyName) {
+        if (
+          !confirm(
+            `Are you sure you want to delete "${companyName}"? This action cannot be undone.`
+          )
+        )
+          return;
+
+        try {
+          const token = getAuthToken();
+          const response = await fetch(
+            `${API_BASE_URL}/companies/${companyId}`,
+            {
+              method: "DELETE",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+            }
+          );
+
+          const data = await response.json();
+
+          if (data.success) {
+            showMessage("Company deleted successfully!", "success");
+            loadCompanies(currentPage);
+            loadStatistics();
+          } else {
+            showMessage(data.error || "Failed to delete company");
+          }
+        } catch (error) {
+          console.error("Delete company error:", error);
+          showMessage("Failed to delete company");
+        }
+      }
+
+      // Form submission
+      document
+        .getElementById("company-form")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const saveButton = document.getElementById("save-company-btn");
+          const saveText = document.getElementById("save-company-text");
+          const saveSpinner = document.getElementById("save-company-spinner");
+
+          // Set loading state
+          saveButton.disabled = true;
+          saveText.textContent = "Creating...";
+          saveSpinner.classList.remove("hidden");
+
+          try {
+            const token = getAuthToken();
+            const companyData = {
+              name: document.getElementById("company-name").value.trim(),
+              slug: document.getElementById("company-slug").value.trim(),
+              contactName: document.getElementById("company-contact-name").value.trim(),
+              email: document.getElementById("company-email").value.trim(),
+              phone:
+                document.getElementById("company-phone").value.trim() ||
+                undefined,
+              companyType: document.getElementById("company-type").value,
+              guardianPlan: document.getElementById("company-plan").value,
+              status: document.getElementById("company-status").value,
+              address: {
+                street: document
+                  .getElementById("company-address-street")
+                  .value.trim(),
+                city: document
+                  .getElementById("company-address-city")
+                  .value.trim(),
+                state: document
+                  .getElementById("company-address-state")
+                  .value.trim(),
+                zipCode: document
+                  .getElementById("company-address-zip")
+                  .value.trim(),
+                country: document
+                  .getElementById("company-address-country")
+                  .value.trim(),
+              },
+            };
+
+            const response = await fetch(`${API_BASE_URL}/companies`, {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(companyData),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              showMessage("Company created successfully!", "success");
+              closeCompanyModal();
+              loadCompanies(currentPage);
+              loadStatistics();
+            } else {
+              showMessage(data.error || "Failed to create company");
+            }
+          } catch (error) {
+            console.error("Create company error:", error);
+            showMessage("Failed to create company");
+          } finally {
+            // Reset button state
+            saveButton.disabled = false;
+            saveText.textContent = "Create Company";
+            saveSpinner.classList.add("hidden");
+          }
+        });
+
+      // Initialize
+      document.addEventListener("DOMContentLoaded", () => {
+        loadCurrentUser();
+      });
+
+      // Auto-generate slug from company name
+      document
+        .getElementById("company-name")
+        .addEventListener("input", function (e) {
+          const slug = e.target.value
+            .toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, "")
+            .replace(/\s+/g, "-")
+            .replace(/-+/g, "-")
+            .trim();
+          document.getElementById("company-slug").value = slug;
+        });
+    </script>
+  </body>
+</html>

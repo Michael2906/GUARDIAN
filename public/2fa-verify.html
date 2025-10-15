@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Two-Factor Authentication - GUARDIAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+  </head>
+  <body
+    class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen flex items-center justify-center"
+  >
+    <div class="max-w-md w-full mx-4">
+      <!-- Logo and Header -->
+      <div class="text-center mb-8">
+        <div class="text-4xl font-bold text-blue-600 mb-2">
+          <i class="fas fa-shield-alt mr-2"></i>GUARDIAN
+        </div>
+        <p class="text-gray-600">3PL Logistics Management Platform</p>
+      </div>
+
+      <!-- 2FA Verification Card -->
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="p-8">
+          <!-- Header -->
+          <div class="text-center mb-6">
+            <div
+              class="bg-blue-100 rounded-full w-16 h-16 flex items-center justify-center mx-auto mb-4"
+            >
+              <i class="fas fa-mobile-alt text-blue-600 text-2xl"></i>
+            </div>
+            <h1 class="text-2xl font-bold text-gray-900 mb-2">
+              Two-Factor Authentication
+            </h1>
+            <p class="text-gray-600">
+              Enter the 6-digit code from your authenticator app
+            </p>
+          </div>
+
+          <!-- User Info -->
+          <div class="bg-gray-50 rounded-lg p-4 mb-6">
+            <div class="flex items-center">
+              <div
+                class="bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center mr-3"
+              >
+                <i class="fas fa-user text-white text-sm"></i>
+              </div>
+              <div>
+                <p class="font-medium text-gray-900" id="user-email">
+                  Loading...
+                </p>
+                <p class="text-sm text-gray-500">Password verified ✓</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div class="mb-6">
+            <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+              <div class="flex items-start">
+                <i class="fas fa-info-circle text-blue-600 mr-3 mt-1"></i>
+                <div>
+                  <h3 class="text-sm font-medium text-blue-800 mb-1">
+                    How to get your code
+                  </h3>
+                  <ul class="text-sm text-blue-700 space-y-1">
+                    <li>
+                      • Open your authenticator app (Google Authenticator,
+                      Authy, etc.)
+                    </li>
+                    <li>• Find the entry for "GUARDIAN"</li>
+                    <li>• Enter the current 6-digit code below</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2FA Form -->
+          <form id="twofa-form">
+            <div class="mb-6">
+              <label
+                for="verification-code"
+                class="block text-sm font-medium text-gray-700 text-center mb-3"
+              >
+                Authentication Code
+              </label>
+              <input
+                type="text"
+                id="verification-code"
+                name="code"
+                maxlength="8"
+                placeholder="000000"
+                autocomplete="one-time-code"
+                class="w-full px-4 py-4 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-center text-2xl font-mono tracking-widest"
+                required
+              />
+              <p class="text-xs text-gray-500 mt-2 text-center">
+                Enter the 6-digit code from your authenticator app or an
+                8-character backup code
+              </p>
+            </div>
+
+            <!-- Submit Button -->
+            <button
+              type="submit"
+              id="verify-button"
+              class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              <span id="verify-text">Verify & Sign In</span>
+              <i
+                id="verify-spinner"
+                class="fas fa-spinner fa-spin ml-2 hidden"
+              ></i>
+            </button>
+          </form>
+
+          <!-- Alternative Options -->
+          <div class="mt-6 text-center">
+            <button
+              type="button"
+              onclick="showBackupHelp()"
+              class="text-sm text-gray-600 hover:text-gray-800 focus:outline-none"
+            >
+              <i class="fas fa-key mr-1"></i>
+              Lost your phone? Use backup codes
+            </button>
+          </div>
+
+          <!-- Help Section -->
+          <div
+            id="backup-help"
+            class="hidden mt-4 bg-yellow-50 rounded-lg p-4 border border-yellow-200"
+          >
+            <h3 class="font-medium text-yellow-800 mb-2">
+              <i class="fas fa-key text-yellow-600 mr-2"></i>Using Backup Codes
+            </h3>
+            <p class="text-sm text-yellow-700 mb-2">
+              If you don't have access to your authenticator app, you can use
+              one of your backup codes:
+            </p>
+            <ul class="text-xs text-yellow-600 space-y-1 mb-3">
+              <li>• Enter any unused 8-character backup code above</li>
+              <li>• Each backup code can only be used once</li>
+              <li>• Backup codes were provided when you enabled 2FA</li>
+            </ul>
+            <button
+              type="button"
+              onclick="hideBackupHelp()"
+              class="text-xs text-yellow-700 hover:text-yellow-800"
+            >
+              <i class="fas fa-times mr-1"></i>Hide this help
+            </button>
+          </div>
+
+          <!-- Error/Success Messages -->
+          <div id="message-container" class="hidden mt-6">
+            <div id="message" class="p-4 rounded-lg text-sm"></div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-gray-50 px-8 py-4 border-t">
+          <div class="flex items-center justify-between text-sm">
+            <button
+              type="button"
+              onclick="goBack()"
+              class="text-gray-600 hover:text-gray-800 flex items-center"
+            >
+              <i class="fas fa-arrow-left mr-1"></i>
+              Back to Login
+            </button>
+            <div class="text-gray-500">
+              <i class="fas fa-clock mr-1"></i>
+              Session expires in <span id="session-timer">10:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "/api";
+      let sessionTimer = 600; // 10 minutes in seconds
+      let timerInterval = null;
+
+      // Get session data
+      function getSessionData() {
+        return {
+          userId: localStorage.getItem("guardian_2fa_user_id"),
+          email: localStorage.getItem("guardian_2fa_email"),
+          tempSession: localStorage.getItem("guardian_2fa_temp_session"),
+          remember: localStorage.getItem("guardian_2fa_remember") === "true",
+        };
+      }
+
+      // Show/hide loading state
+      function setLoading(loading) {
+        const button = document.getElementById("verify-button");
+        const text = document.getElementById("verify-text");
+        const spinner = document.getElementById("verify-spinner");
+        const input = document.getElementById("verification-code");
+
+        button.disabled = loading;
+        input.disabled = loading;
+
+        if (loading) {
+          text.textContent = "Verifying...";
+          spinner.classList.remove("hidden");
+          button.classList.add("opacity-75");
+        } else {
+          text.textContent = "Verify & Sign In";
+          spinner.classList.add("hidden");
+          button.classList.remove("opacity-75");
+        }
+      }
+
+      // Show message
+      function showMessage(message, type = "error") {
+        const container = document.getElementById("message-container");
+        const messageDiv = document.getElementById("message");
+
+        container.classList.remove("hidden");
+        messageDiv.className = `p-4 rounded-lg text-sm ${
+          type === "error"
+            ? "bg-red-50 text-red-700 border border-red-200"
+            : "bg-green-50 text-green-700 border border-green-200"
+        }`;
+        messageDiv.textContent = message;
+
+        // Auto hide success messages after 3 seconds
+        if (type === "success") {
+          setTimeout(() => {
+            container.classList.add("hidden");
+          }, 3000);
+        }
+      }
+
+      // Hide message
+      function hideMessage() {
+        document.getElementById("message-container").classList.add("hidden");
+      }
+
+      // Show/hide backup help
+      function showBackupHelp() {
+        document.getElementById("backup-help").classList.remove("hidden");
+      }
+
+      function hideBackupHelp() {
+        document.getElementById("backup-help").classList.add("hidden");
+      }
+
+      // Session timer
+      function startSessionTimer() {
+        const timerElement = document.getElementById("session-timer");
+
+        timerInterval = setInterval(() => {
+          sessionTimer--;
+
+          const minutes = Math.floor(sessionTimer / 60);
+          const seconds = sessionTimer % 60;
+          timerElement.textContent = `${minutes}:${seconds
+            .toString()
+            .padStart(2, "0")}`;
+
+          if (sessionTimer <= 0) {
+            clearInterval(timerInterval);
+            showMessage("Session expired. Please log in again.", "error");
+            setTimeout(() => {
+              goBack();
+            }, 3000);
+          }
+        }, 1000);
+      }
+
+      // Go back to login
+      function goBack() {
+        // Clear 2FA session data
+        localStorage.removeItem("guardian_2fa_user_id");
+        localStorage.removeItem("guardian_2fa_email");
+        localStorage.removeItem("guardian_2fa_temp_session");
+        localStorage.removeItem("guardian_2fa_remember");
+
+        window.location.href = "/";
+      }
+
+      // Handle form submission
+      async function handle2FASubmission(event) {
+        event.preventDefault();
+        hideMessage();
+
+        const sessionData = getSessionData();
+        const code = document.getElementById("verification-code").value.trim();
+
+        // Validation
+        if (!code) {
+          showMessage("Please enter your authentication code");
+          return;
+        }
+
+        if (code.length < 6) {
+          showMessage("Authentication code must be at least 6 characters");
+          return;
+        }
+
+        if (!sessionData.userId || !sessionData.tempSession) {
+          showMessage("Session expired. Please log in again.");
+          setTimeout(() => goBack(), 2000);
+          return;
+        }
+
+        setLoading(true);
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/login-2fa`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              userId: sessionData.userId,
+              token: code,
+              tempSession: sessionData.tempSession,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Store tokens
+            localStorage.setItem(
+              "guardian_access_token",
+              data.data.tokens.accessToken
+            );
+
+            if (sessionData.remember) {
+              localStorage.setItem(
+                "guardian_refresh_token",
+                data.data.tokens.refreshToken
+              );
+            } else {
+              sessionStorage.setItem(
+                "guardian_refresh_token",
+                data.data.tokens.refreshToken
+              );
+            }
+
+            // Store user info
+            localStorage.setItem(
+              "guardian_user",
+              JSON.stringify(data.data.user)
+            );
+
+            // Clear 2FA session data
+            localStorage.removeItem("guardian_2fa_user_id");
+            localStorage.removeItem("guardian_2fa_email");
+            localStorage.removeItem("guardian_2fa_temp_session");
+            localStorage.removeItem("guardian_2fa_remember");
+
+            showMessage("Authentication successful! Redirecting...", "success");
+
+            // Redirect based on user role
+            setTimeout(() => {
+              switch (data.data.user.role) {
+                case "guardian-admin":
+                  window.location.href = "/admin/admin-dashboard.html";
+                  break;
+                default:
+                  window.location.href = "/dashboard.html";
+              }
+            }, 1000);
+          } else {
+            showMessage(
+              data.error || "Invalid authentication code. Please try again."
+            );
+
+            // Clear the input and focus
+            document.getElementById("verification-code").value = "";
+            document.getElementById("verification-code").focus();
+          }
+        } catch (error) {
+          console.error("2FA verification error:", error);
+          showMessage(
+            "Network error. Please check your connection and try again."
+          );
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      // Initialize page
+      document.addEventListener("DOMContentLoaded", () => {
+        const sessionData = getSessionData();
+
+        // Check if we have valid session data
+        if (
+          !sessionData.userId ||
+          !sessionData.email ||
+          !sessionData.tempSession
+        ) {
+          showMessage("Invalid session. Redirecting to login...");
+          setTimeout(() => goBack(), 2000);
+          return;
+        }
+
+        // Display user email
+        document.getElementById("user-email").textContent = sessionData.email;
+
+        // Setup form handler
+        document
+          .getElementById("twofa-form")
+          .addEventListener("submit", handle2FASubmission);
+
+        // Auto-format input (digits only for TOTP, allow letters for backup codes)
+        const codeInput = document.getElementById("verification-code");
+        codeInput.addEventListener("input", (e) => {
+          // Allow digits and letters for backup codes, but limit length
+          e.target.value = e.target.value
+            .replace(/[^a-zA-Z0-9]/g, "")
+            .toUpperCase();
+        });
+
+        // Focus on input
+        codeInput.focus();
+
+        // Start session timer
+        startSessionTimer();
+
+        // Clear input on focus (for better UX)
+        codeInput.addEventListener("focus", () => {
+          hideMessage();
+        });
+      });
+
+      // Handle page visibility (pause timer when hidden)
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden) {
+          if (timerInterval) {
+            clearInterval(timerInterval);
+          }
+        } else {
+          startSessionTimer();
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,62 +1,365 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GUARDIAN - Inventory Management System</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-        .container {
-            max-width: 600px;
-            margin: 50px auto;
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-        }
-        .status {
-            color: #28a745;
-            font-weight: bold;
-            margin: 20px 0;
-        }
-        .info {
-            color: #666;
-            line-height: 1.6;
-        }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <h1>🛡️ GUARDIAN</h1>
-        <p class="info">Multi-Tenant Inventory Management System</p>
-        <div class="status" id="status">Checking server status...</div>
-        <p class="info">
-            This is the technical infrastructure for your inventory tracking system.<br>
-            Authentication and database systems are being configured.
-        </p>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GUARDIAN - Login</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body class="bg-gradient-to-br from-blue-50 to-indigo-100 min-h-screen">
+    <div class="flex items-center justify-center min-h-screen p-4">
+      <div class="w-full max-w-md">
+        <!-- Logo Section -->
+        <div class="text-center mb-8">
+          <div
+            class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-xl mb-4"
+          >
+            <i class="fas fa-shield-alt text-white text-2xl"></i>
+          </div>
+          <h1 class="text-3xl font-bold text-gray-900">GUARDIAN</h1>
+          <p class="text-gray-600 mt-2">3PL Inventory Management Platform</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="bg-white rounded-xl shadow-lg p-8">
+          <h2 class="text-2xl font-semibold text-gray-900 mb-6 text-center">
+            Welcome Back
+          </h2>
+
+          <form id="login-form" class="space-y-6">
+            <!-- Email Field -->
+            <div>
+              <label
+                for="email"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Email Address
+              </label>
+              <div class="relative">
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Enter your email"
+                />
+                <i
+                  class="fas fa-envelope absolute right-3 top-3.5 text-gray-400"
+                ></i>
+              </div>
+            </div>
+
+            <!-- Password Field -->
+            <div>
+              <label
+                for="password"
+                class="block text-sm font-medium text-gray-700 mb-2"
+              >
+                Password
+              </label>
+              <div class="relative">
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  required
+                  class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  placeholder="Enter your password"
+                />
+                <i
+                  class="fas fa-lock absolute right-3 top-3.5 text-gray-400"
+                ></i>
+              </div>
+            </div>
+
+            <!-- Remember Me -->
+            <div class="flex items-center justify-between">
+              <div class="flex items-center">
+                <input
+                  id="remember"
+                  name="remember"
+                  type="checkbox"
+                  class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label for="remember" class="ml-2 block text-sm text-gray-700">
+                  Remember me
+                </label>
+              </div>
+              <div class="text-sm">
+                <a
+                  href="#"
+                  class="font-medium text-blue-600 hover:text-blue-500"
+                >
+                  Forgot password?
+                </a>
+              </div>
+            </div>
+
+            <!-- Login Button -->
+            <button
+              type="submit"
+              id="login-button"
+              class="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors"
+            >
+              <span id="login-text">Sign In</span>
+              <i
+                id="login-spinner"
+                class="fas fa-spinner fa-spin ml-2 hidden"
+              ></i>
+            </button>
+          </form>
+
+          <!-- Error/Success Messages -->
+          <div id="message-container" class="mt-4 hidden">
+            <div id="message" class="p-4 rounded-lg text-sm"></div>
+          </div>
+        </div>
+
+        <!-- Features Section -->
+        <div class="mt-8 text-center">
+          <div class="grid grid-cols-3 gap-4 text-xs text-gray-600">
+            <div class="flex flex-col items-center">
+              <i class="fas fa-warehouse text-blue-600 mb-2"></i>
+              <span>Multi-Warehouse</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <i class="fas fa-users text-blue-600 mb-2"></i>
+              <span>Multi-Tenant</span>
+            </div>
+            <div class="flex flex-col items-center">
+              <i class="fas fa-chart-line text-blue-600 mb-2"></i>
+              <span>Real-Time Analytics</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
+    <!-- JavaScript -->
     <script>
-        // Test API connectivity
-        fetch('/api/health')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('status').innerHTML = '✅ Server Status: ' + data.status;
+      const API_BASE_URL = "/api";
+
+      // Form elements
+      const loginForm = document.getElementById("login-form");
+      const loginButton = document.getElementById("login-button");
+      const loginText = document.getElementById("login-text");
+      const loginSpinner = document.getElementById("login-spinner");
+      const messageContainer = document.getElementById("message-container");
+      const messageDiv = document.getElementById("message");
+
+      // Show message function
+      function showMessage(message, type = "error") {
+        messageContainer.classList.remove("hidden");
+        messageDiv.className = `p-4 rounded-lg text-sm ${
+          type === "error"
+            ? "bg-red-50 text-red-700 border border-red-200"
+            : "bg-green-50 text-green-700 border border-green-200"
+        }`;
+        messageDiv.textContent = message;
+      }
+
+      // Hide message function
+      function hideMessage() {
+        messageContainer.classList.add("hidden");
+      }
+
+      // Set loading state
+      function setLoading(loading) {
+        loginButton.disabled = loading;
+        if (loading) {
+          loginText.textContent = "Signing In...";
+          loginSpinner.classList.remove("hidden");
+          loginButton.classList.add("opacity-75", "cursor-not-allowed");
+        } else {
+          loginText.textContent = "Sign In";
+          loginSpinner.classList.add("hidden");
+          loginButton.classList.remove("opacity-75", "cursor-not-allowed");
+        }
+      }
+
+      // Handle form submission
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        hideMessage();
+
+        const formData = new FormData(loginForm);
+        const email = formData.get("email");
+        const password = formData.get("password");
+        const remember = formData.get("remember");
+
+        // Basic validation
+        if (!email || !password) {
+          showMessage("Please fill in all required fields");
+          return;
+        }
+
+        setLoading(true);
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email,
+              password,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (data.success) {
+            // Check if 2FA verification is required
+            if (data.requiresTwoFactor) {
+              // Store temporary session data for 2FA
+              localStorage.setItem(
+                "guardian_2fa_temp_session",
+                data.data.tempSession
+              );
+              localStorage.setItem("guardian_2fa_user_id", data.data.userId);
+              localStorage.setItem("guardian_2fa_email", data.data.email);
+              localStorage.setItem(
+                "guardian_2fa_remember",
+                remember ? "true" : "false"
+              );
+
+              showMessage(
+                "Password verified. Redirecting to 2FA verification...",
+                "success"
+              );
+
+              // Redirect to 2FA verification page
+              setTimeout(() => {
+                window.location.href = "/2fa-verify.html";
+              }, 1000);
+              return;
+            }
+
+            // Regular login (no 2FA required)
+            // Store tokens
+            localStorage.setItem(
+              "guardian_access_token",
+              data.data.tokens.accessToken
+            );
+
+            if (remember) {
+              localStorage.setItem(
+                "guardian_refresh_token",
+                data.data.tokens.refreshToken
+              );
+            } else {
+              sessionStorage.setItem(
+                "guardian_refresh_token",
+                data.data.tokens.refreshToken
+              );
+            }
+
+            // Store user info
+            localStorage.setItem(
+              "guardian_user",
+              JSON.stringify(data.data.user)
+            );
+
+            showMessage("Login successful! Redirecting...", "success");
+
+            // Redirect based on user role
+            setTimeout(() => {
+              switch (data.data.user.role) {
+                case "guardian-admin":
+                  window.location.href = "/admin/admin-dashboard.html";
+                  break;
+                case "storage-admin":
+                  window.location.href = "/dashboard.html";
+                  break;
+                case "storage-manager":
+                  window.location.href = "/dashboard.html";
+                  break;
+                case "storage-employee":
+                  window.location.href = "/dashboard.html";
+                  break;
+                case "client-admin":
+                case "client-user":
+                case "client-viewer":
+                  window.location.href = "/dashboard.html";
+                  break;
+                default:
+                  window.location.href = "/dashboard.html";
+              }
+            }, 1000);
+          } else {
+            showMessage(data.error || "Login failed. Please try again.");
+          }
+        } catch (error) {
+          console.error("Login error:", error);
+          showMessage(
+            "Network error. Please check your connection and try again."
+          );
+        } finally {
+          setLoading(false);
+        }
+      });
+
+      // Check if user is already logged in
+      document.addEventListener("DOMContentLoaded", () => {
+        const accessToken = localStorage.getItem("guardian_access_token");
+        const refreshToken =
+          localStorage.getItem("guardian_refresh_token") ||
+          sessionStorage.getItem("guardian_refresh_token");
+
+        if (accessToken && refreshToken) {
+          // Verify token is still valid
+          fetch(`${API_BASE_URL}/auth/verify`, {
+            headers: {
+              "Authorization": `Bearer ${accessToken}`,
+            },
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                // User is already logged in, redirect
+                const user = data.data.user;
+                switch (user.role) {
+                  case "guardian-admin":
+                    window.location.href = "/admin/admin-dashboard.html";
+                    break;
+                  case "storage-admin":
+                  case "storage-manager":
+                  case "storage-employee":
+                    window.location.href = "/dashboard.html";
+                    break;
+                  case "client-admin":
+                  case "client-user":
+                  case "client-viewer":
+                    window.location.href = "/dashboard.html";
+                    break;
+                  default:
+                    window.location.href = "/dashboard.html";
+                }
+              }
             })
-            .catch(error => {
-                document.getElementById('status').innerHTML = '❌ Server Status: Error';
-                document.getElementById('status').style.color = '#dc3545';
+            .catch((error) => {
+              // Token invalid, clear storage
+              localStorage.removeItem("guardian_access_token");
+              localStorage.removeItem("guardian_refresh_token");
+              sessionStorage.removeItem("guardian_refresh_token");
+              localStorage.removeItem("guardian_user");
             });
+        }
+      });
+
+      // Add input focus effects
+      const inputs = document.querySelectorAll("input, select");
+      inputs.forEach((input) => {
+        input.addEventListener("focus", () => {
+          hideMessage();
+        });
+      });
     </script>
-</body>
+  </body>
 </html>
