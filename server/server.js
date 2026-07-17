@@ -23,19 +23,27 @@ const corsOptions = {
     // Allow requests with no origin (like mobile apps or curl requests)
     if (!origin) return callback(null, true);
 
-    // In production, you'll want to restrict this to your actual domains
     const allowedOrigins = [
       "http://localhost:3000",
       "http://localhost:3001",
       "http://127.0.0.1:3000",
-      // Add your production domains here
-    ];
+      process.env.CORS_ORIGIN, // explicit production domain, if set
+    ].filter(Boolean);
 
     if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
+      return callback(null, true);
     }
+
+    // Allow the app's own Azure App Service domain (same-origin in production).
+    try {
+      if (/\.azurewebsites\.net$/i.test(new URL(origin).hostname)) {
+        return callback(null, true);
+      }
+    } catch (_) {
+      /* malformed origin — fall through to reject */
+    }
+
+    callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
 };
