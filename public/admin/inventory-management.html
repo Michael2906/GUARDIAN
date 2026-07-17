@@ -37,12 +37,15 @@
     </div>
 
     <div class="max-w-7xl mx-auto px-4 py-8">
+      <div id="oversight-banner" class="hidden mb-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-4 py-2 text-sm">
+        <i class="fas fa-eye mr-1"></i> Oversight view (read-only) — inventory is managed by each storage company.
+      </div>
       <div class="flex items-center justify-between mb-6">
         <div>
           <h2 class="text-2xl font-bold text-gray-900">Inventory</h2>
           <p class="text-gray-600">Track stock levels, receiving and shipping</p>
         </div>
-        <button onclick="openAddModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+        <button id="add-btn" onclick="openAddModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
           <i class="fas fa-plus mr-2"></i>Add Item
         </button>
       </div>
@@ -101,6 +104,7 @@
             <tr>
               <th class="text-left px-4 py-3">Item</th>
               <th class="text-left px-4 py-3">Warehouse</th>
+              <th class="text-left px-4 py-3">Client</th>
               <th class="text-left px-4 py-3">Qty</th>
               <th class="text-left px-4 py-3">Reorder</th>
               <th class="text-left px-4 py-3">Status</th>
@@ -134,7 +138,7 @@
           <input type="hidden" id="i-id" />
           <div id="company-wrap" class="hidden">
             <label class="block text-sm font-medium text-gray-700 mb-1">Storage Company *</label>
-            <select id="i-company" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="filterWarehouseOptions()"></select>
+            <select id="i-company" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="filterWarehouseOptions();filterClientOptions()"></select>
           </div>
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -155,6 +159,12 @@
               <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <input id="i-category" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
             </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client (owner of goods)</label>
+            <select id="i-client" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+              <option value="">(unassigned)</option>
+            </select>
           </div>
           <div class="grid grid-cols-3 gap-4">
             <div id="qty-wrap">
@@ -246,7 +256,7 @@
       const API_BASE_URL = "/api";
       let currentUser = null;
       let currentPage = 1, totalPages = 1, searchTimeout = null;
-      let companies = [], warehouses = [];
+      let companies = [], warehouses = [], clients = [];
 
       const getAuthToken = () => localStorage.getItem("guardian_access_token");
       const isGuardian = () => currentUser && currentUser.role === "guardian-admin";
@@ -288,12 +298,41 @@
         currentUser = data.data.user;
         document.getElementById("user-name").textContent = `${currentUser.firstName} ${currentUser.lastName}`;
         if (isGuardian()) {
+          // Guardian is oversight only: read-only across all tenants.
           document.getElementById("company-wrap").classList.remove("hidden");
+          document.getElementById("oversight-banner").classList.remove("hidden");
+          document.getElementById("add-btn").classList.add("hidden");
           await loadCompanies();
         }
         await loadWarehouses();
+        await loadClients();
         loadStatistics();
         loadItems();
+      }
+
+      async function loadClients() {
+        const { ok, data } = await api("/clients?limit=100");
+        if (ok && data.success) {
+          clients = data.data.clients;
+          filterClientOptions();
+        }
+      }
+
+      // Restrict the modal client dropdown to the chosen company (guardian) or all in scope.
+      function filterClientOptions() {
+        const sel = document.getElementById("i-client");
+        let list = clients;
+        if (isGuardian()) {
+          const cid = document.getElementById("i-company").value;
+          list = clients.filter((c) => {
+            const cc = c.storageCompanyId && (c.storageCompanyId._id || c.storageCompanyId);
+            return String(cc) === String(cid);
+          });
+        }
+        const cur = sel.value;
+        sel.innerHTML = `<option value="">(unassigned)</option>` +
+          list.map((c) => `<option value="${c._id}">${c.name}</option>`).join("");
+        if (cur) sel.value = cur;
       }
 
       async function loadCompanies() {
@@ -370,6 +409,7 @@
           empty.classList.add("hidden");
           tbody.innerHTML = list.map((it) => {
             const whName = it.warehouseId && it.warehouseId.name ? it.warehouseId.name : "—";
+            const clName = it.clientBusinessId && it.clientBusinessId.name ? it.clientBusinessId.name : "—";
             const low = it.isLowStock;
             const out = it.quantity === 0;
             const badge = out
@@ -384,14 +424,14 @@
                 <div class="text-xs text-gray-500">${it.sku || ""}${it.category ? " · " + it.category : ""}</div>
               </td>
               <td class="px-4 py-3">${whName}</td>
+              <td class="px-4 py-3">${clName}</td>
               <td class="px-4 py-3 font-medium">${it.quantity} <span class="text-xs text-gray-400">${it.unit}</span></td>
               <td class="px-4 py-3">${it.reorderPoint || "—"}</td>
               <td class="px-4 py-3">${badge}</td>
-              <td class="px-4 py-3 text-right space-x-2">
+              <td class="px-4 py-3 text-right space-x-2">${isGuardian() ? '<span class="text-gray-300">—</span>' : `
                 <button onclick='openAdjust(${JSON.stringify({ _id: it._id, name: it.name, quantity: it.quantity }).replace(/'/g, "&#39;")})' class="text-green-600 hover:text-green-800" title="Adjust stock"><i class="fas fa-right-left"></i></button>
                 <button onclick='openEditModal(${JSON.stringify(it).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fas fa-pen"></i></button>
-                <button onclick="removeItem('${it._id}','${(it.name || "").replace(/'/g, "&#39;")}')" class="text-red-600 hover:text-red-800" title="Delete"><i class="fas fa-trash"></i></button>
-              </td>
+                <button onclick="removeItem('${it._id}','${(it.name || "").replace(/'/g, "&#39;")}')" class="text-red-600 hover:text-red-800" title="Delete"><i class="fas fa-trash"></i></button>`}</td>
             </tr>`;
           }).join("");
         }
@@ -412,7 +452,9 @@
         document.getElementById("i-status").value = "active";
         document.getElementById("qty-wrap").classList.remove("hidden");
         document.getElementById("edit-note").classList.add("hidden");
+        document.getElementById("i-client").value = "";
         filterWarehouseOptions();
+        filterClientOptions();
         document.getElementById("modal").classList.remove("hidden");
       }
 
@@ -436,8 +478,11 @@
           if (cid) document.getElementById("i-company").value = cid;
         }
         filterWarehouseOptions();
+        filterClientOptions();
         const whId = it.warehouseId && (it.warehouseId._id || it.warehouseId);
         if (whId) document.getElementById("i-warehouse").value = whId;
+        const clId = it.clientBusinessId && (it.clientBusinessId._id || it.clientBusinessId);
+        document.getElementById("i-client").value = clId || "";
         document.getElementById("modal").classList.remove("hidden");
       }
 
@@ -456,6 +501,7 @@
           status: document.getElementById("i-status").value,
           description: document.getElementById("i-desc").value.trim(),
           warehouseId: document.getElementById("i-warehouse").value || null,
+          clientBusinessId: document.getElementById("i-client").value || null,
         };
         if (!body.name) return showMessage("Name is required");
         if (!id) {

@@ -291,6 +291,21 @@ router.put("/:id", authenticateToken, async (req, res) => {
       }
     }
 
+    // Client reassignment (storage/guardian only) — must stay within the company.
+    if (req.body.clientBusinessId !== undefined && !isClientUser(req)) {
+      const newClientId = req.body.clientBusinessId || null;
+      if (newClientId) {
+        const cli = await ClientBusiness.findByPk(newClientId);
+        if (!cli || String(cli.storageCompanyId) !== String(item.storageCompanyId)) {
+          return res.status(400).json({
+            success: false,
+            error: "Client not found for this company",
+          });
+        }
+      }
+      item.clientBusinessId = newClientId;
+    }
+
     const fields = [
       "name",
       "sku",

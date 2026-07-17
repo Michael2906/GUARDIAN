@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Client Management - GUARDIAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body class="bg-gray-50">
+    <div class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <div class="text-2xl font-bold text-purple-600"><i class="fas fa-shield-alt mr-2"></i>GUARDIAN</div>
+          <span class="text-gray-400">|</span>
+          <h1 class="text-xl font-semibold text-gray-800">Client Management</h1>
+        </div>
+        <div class="flex items-center space-x-4 text-sm">
+          <a href="/dashboard.html" class="text-gray-600 hover:text-gray-900"><i class="fas fa-gauge mr-1"></i>Dashboard</a>
+          <a href="/admin/inventory-management.html" class="text-gray-600 hover:text-gray-900"><i class="fas fa-boxes-stacked mr-1"></i>Inventory</a>
+          <a href="/admin/invoices.html" class="text-gray-600 hover:text-gray-900"><i class="fas fa-file-invoice-dollar mr-1"></i>Billing</a>
+          <span id="user-name" class="font-medium text-gray-700">Loading...</span>
+          <button onclick="logout()" class="text-red-600 hover:text-red-700"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div id="oversight-banner" class="hidden mb-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-4 py-2 text-sm">
+        <i class="fas fa-eye mr-1"></i> Oversight view (read-only) — client management is done by each storage company.
+      </div>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Clients</h2>
+          <p class="text-gray-600">Businesses that store goods with you, and their billing rates</p>
+        </div>
+        <button id="add-btn" onclick="openAddModal()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+          <i class="fas fa-plus mr-2"></i>Add Client
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-gray-900" id="stat-clients">0</div><div class="text-sm text-gray-500">Total Clients</div></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-48">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Search</label>
+          <input id="f-search" type="text" placeholder="Name, code or email" class="w-full border border-gray-300 rounded-lg px-3 py-2" oninput="debouncedLoad()" />
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+            <tr>
+              <th class="text-left px-4 py-3">Client</th>
+              <th class="text-left px-4 py-3">Contact</th>
+              <th class="text-left px-4 py-3">Items</th>
+              <th class="text-left px-4 py-3">Storage Rate</th>
+              <th class="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="hidden text-center py-12 text-gray-500">
+          <i class="fas fa-user-tie text-4xl mb-3 text-gray-300"></i>
+          <p>No clients yet.</p>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600">
+          <span id="page-info"></span>
+          <div class="space-x-2">
+            <button id="prev" onclick="changePage(-1)" class="px-3 py-1 border rounded disabled:opacity-40">Prev</button>
+            <button id="next" onclick="changePage(1)" class="px-3 py-1 border rounded disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 id="modal-title" class="text-lg font-semibold">Add Client</h3>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+          <input type="hidden" id="c-id" />
+          <div id="company-wrap" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Storage Company *</label>
+            <select id="c-company" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Name *</label><input id="c-name" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Client Code</label><input id="c-code" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+          </div>
+          <div class="grid grid-cols-3 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Contact</label><input id="c-contact" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Email</label><input id="c-email" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Phone</label><input id="c-phone" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+          </div>
+
+          <div class="border-t pt-4">
+            <h4 class="text-sm font-semibold text-gray-800 mb-3"><i class="fas fa-file-invoice-dollar text-purple-600 mr-1"></i>Billing Rates</h4>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Storage basis</label>
+                <select id="c-basis" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option value="per-unit-month">Per unit / month</option>
+                  <option value="per-pallet-month">Per pallet / month</option>
+                  <option value="per-cubic-ft-month">Per cubic ft / month</option>
+                </select>
+              </div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Storage rate ($)</label><input id="c-rate" type="number" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Monthly base fee ($)</label><input id="c-base" type="number" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Handling / movement ($)</label><input id="c-handling" type="number" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+              <div><label class="block text-sm font-medium text-gray-700 mb-1">Transaction / unit ($)</label><input id="c-txn" type="number" step="0.01" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Billing cycle</label>
+                <select id="c-cycle" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                  <option value="monthly">Monthly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="yearly">Yearly</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t flex justify-end space-x-3">
+          <button onclick="closeModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
+          <button onclick="save()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message-container" class="hidden fixed top-4 right-4 z-50"><div id="message"></div></div>
+
+    <script>
+      const API_BASE_URL = "/api";
+      let currentUser = null, currentPage = 1, totalPages = 1, searchTimeout = null, companies = [];
+      const getAuthToken = () => localStorage.getItem("guardian_access_token");
+      const isGuardian = () => currentUser && currentUser.role === "guardian-admin";
+
+      function showMessage(msg, type = "error") {
+        const c = document.getElementById("message-container"), m = document.getElementById("message");
+        m.textContent = msg;
+        const colors = { success: "bg-green-100 text-green-800 border-green-200", info: "bg-blue-100 text-blue-800 border-blue-200", error: "bg-red-100 text-red-800 border-red-200" };
+        m.className = `p-4 rounded-lg shadow-lg border max-w-sm ${colors[type] || colors.error}`;
+        c.classList.remove("hidden"); setTimeout(() => c.classList.add("hidden"), 4000);
+      }
+      async function api(path, options = {}) {
+        const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}`, ...(options.headers || {}) } });
+        return { ok: res.ok, data: await res.json().catch(() => ({})) };
+      }
+      function logout() { ["guardian_access_token","guardian_refresh_token","guardian_user"].forEach((k) => localStorage.removeItem(k)); window.location.href = "/"; }
+
+      async function init() {
+        if (!getAuthToken()) return (window.location.href = "/");
+        const { ok, data } = await api("/auth/verify");
+        if (!ok || !data.success) return (window.location.href = "/");
+        currentUser = data.data.user;
+        document.getElementById("user-name").textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+        if (isGuardian()) {
+          document.getElementById("company-wrap").classList.remove("hidden");
+          document.getElementById("oversight-banner").classList.remove("hidden");
+          document.getElementById("add-btn").classList.add("hidden");
+          await loadCompanies();
+        }
+        loadStatistics();
+        loadClients();
+      }
+
+      async function loadCompanies() {
+        const { ok, data } = await api("/companies?limit=100&status=active");
+        if (ok && data.success) {
+          companies = data.data.companies;
+          document.getElementById("c-company").innerHTML = companies.length
+            ? companies.map((c) => `<option value="${c._id}">${c.name}</option>`).join("")
+            : `<option value="">(no active companies)</option>`;
+        }
+      }
+      async function loadStatistics() {
+        const { ok, data } = await api("/clients/statistics");
+        if (ok && data.success) document.getElementById("stat-clients").textContent = data.data.totalClients;
+      }
+      function debouncedLoad() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 1; loadClients(); }, 350); }
+
+      async function loadClients() {
+        const params = new URLSearchParams({ page: currentPage, limit: 10 });
+        const s = document.getElementById("f-search").value.trim();
+        if (s) params.set("search", s);
+        const { ok, data } = await api(`/clients?${params}`);
+        const tbody = document.getElementById("tbody"), empty = document.getElementById("empty");
+        if (!ok || !data.success) return showMessage(data.error || "Failed to load");
+        const list = data.data.clients; totalPages = data.data.pagination.pages || 1;
+        if (!list.length) { tbody.innerHTML = ""; empty.classList.remove("hidden"); }
+        else {
+          empty.classList.add("hidden");
+          tbody.innerHTML = list.map((c) => {
+            const bc = c.billingConfig || {};
+            const rate = `$${Number(bc.storageRate || 0).toFixed(2)} <span class="text-xs text-gray-400">${(bc.storageBasis || "").replace("per-", "").replace("-month", "/mo")}</span>`;
+            const actions = isGuardian() ? "" : `
+                <button onclick='openEditModal(${JSON.stringify(c).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fas fa-pen"></i></button>
+                <button onclick="removeClient('${c._id}','${(c.name||"").replace(/'/g,"&#39;")}')" class="text-red-600 hover:text-red-800" title="Delete"><i class="fas fa-trash"></i></button>`;
+            return `<tr class="border-t hover:bg-gray-50">
+              <td class="px-4 py-3"><div class="font-medium text-gray-900">${c.name}</div><div class="text-xs text-gray-500">${c.clientCode || ""}</div></td>
+              <td class="px-4 py-3"><div>${c.contactName || "—"}</div><div class="text-xs text-gray-500">${c.email || ""}</div></td>
+              <td class="px-4 py-3">${c.itemCount ?? 0}</td>
+              <td class="px-4 py-3">${rate}</td>
+              <td class="px-4 py-3 text-right space-x-2">${actions || '<span class="text-gray-300">—</span>'}</td>
+            </tr>`;
+          }).join("");
+        }
+        document.getElementById("page-info").textContent = `Page ${currentPage} of ${totalPages} · ${data.data.pagination.total} total`;
+        document.getElementById("prev").disabled = currentPage <= 1;
+        document.getElementById("next").disabled = currentPage >= totalPages;
+      }
+      function changePage(d) { currentPage = Math.min(Math.max(1, currentPage + d), totalPages); loadClients(); }
+
+      function setBilling(bc) {
+        bc = bc || {};
+        document.getElementById("c-basis").value = bc.storageBasis || "per-unit-month";
+        document.getElementById("c-rate").value = bc.storageRate ?? "";
+        document.getElementById("c-base").value = bc.monthlyBaseFee ?? "";
+        document.getElementById("c-handling").value = bc.handlingFeePerMovement ?? "";
+        document.getElementById("c-txn").value = bc.transactionFeePerUnit ?? "";
+        document.getElementById("c-cycle").value = bc.billingCycle || "monthly";
+      }
+      function getBilling() {
+        return {
+          storageBasis: document.getElementById("c-basis").value,
+          storageRate: parseFloat(document.getElementById("c-rate").value) || 0,
+          monthlyBaseFee: parseFloat(document.getElementById("c-base").value) || 0,
+          handlingFeePerMovement: parseFloat(document.getElementById("c-handling").value) || 0,
+          transactionFeePerUnit: parseFloat(document.getElementById("c-txn").value) || 0,
+          billingCycle: document.getElementById("c-cycle").value,
+        };
+      }
+
+      function openAddModal() {
+        document.getElementById("modal-title").textContent = "Add Client";
+        document.getElementById("c-id").value = "";
+        ["c-name","c-code","c-contact","c-email","c-phone"].forEach((i) => (document.getElementById(i).value = ""));
+        setBilling({});
+        document.getElementById("modal").classList.remove("hidden");
+      }
+      function openEditModal(c) {
+        document.getElementById("modal-title").textContent = "Edit Client";
+        document.getElementById("c-id").value = c._id;
+        document.getElementById("c-name").value = c.name || "";
+        document.getElementById("c-code").value = c.clientCode || "";
+        document.getElementById("c-contact").value = c.contactName || "";
+        document.getElementById("c-email").value = c.email || "";
+        document.getElementById("c-phone").value = c.phone || "";
+        setBilling(c.billingConfig);
+        document.getElementById("modal").classList.remove("hidden");
+      }
+      function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+
+      async function save() {
+        const id = document.getElementById("c-id").value;
+        const body = {
+          name: document.getElementById("c-name").value.trim(),
+          clientCode: document.getElementById("c-code").value.trim(),
+          contactName: document.getElementById("c-contact").value.trim(),
+          email: document.getElementById("c-email").value.trim(),
+          phone: document.getElementById("c-phone").value.trim(),
+          billingConfig: getBilling(),
+        };
+        if (!body.name) return showMessage("Name is required");
+        if (isGuardian() && !id) {
+          body.storageCompanyId = document.getElementById("c-company").value;
+          if (!body.storageCompanyId) return showMessage("Select a storage company");
+        }
+        const { ok, data } = id
+          ? await api(`/clients/${id}`, { method: "PUT", body: JSON.stringify(body) })
+          : await api("/clients", { method: "POST", body: JSON.stringify(body) });
+        if (ok && data.success) { showMessage(id ? "Client updated" : "Client created", "success"); closeModal(); loadClients(); loadStatistics(); }
+        else showMessage(data.error || "Save failed");
+      }
+      async function removeClient(id, name) {
+        if (!confirm(`Deactivate client "${name}"?`)) return;
+        const { ok, data } = await api(`/clients/${id}`, { method: "DELETE" });
+        if (ok && data.success) { showMessage("Client deactivated", "success"); loadClients(); loadStatistics(); }
+        else showMessage(data.error || "Delete failed");
+      }
+
+      init();
+    </script>
+  </body>
+</html>

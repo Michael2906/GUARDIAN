@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Billing & Invoices - GUARDIAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body class="bg-gray-50">
+    <div class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <div class="text-2xl font-bold text-purple-600"><i class="fas fa-shield-alt mr-2"></i>GUARDIAN</div>
+          <span class="text-gray-400">|</span>
+          <h1 class="text-xl font-semibold text-gray-800">Billing &amp; Invoices</h1>
+        </div>
+        <div class="flex items-center space-x-4 text-sm">
+          <a href="/dashboard.html" class="text-gray-600 hover:text-gray-900"><i class="fas fa-gauge mr-1"></i>Dashboard</a>
+          <a href="/admin/client-management.html" class="text-gray-600 hover:text-gray-900"><i class="fas fa-user-tie mr-1"></i>Clients</a>
+          <span id="user-name" class="font-medium text-gray-700">Loading...</span>
+          <button onclick="logout()" class="text-red-600 hover:text-red-700"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div id="oversight-banner" class="hidden mb-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg px-4 py-2 text-sm">
+        <i class="fas fa-eye mr-1"></i> Oversight view (read-only) — invoices are issued by each storage company.
+      </div>
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Invoices</h2>
+          <p class="text-gray-600">Bill your clients for storage, handling and fees</p>
+        </div>
+        <button id="gen-btn" onclick="openGenerate()" class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+          <i class="fas fa-file-circle-plus mr-2"></i>Generate Invoice
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-gray-900" id="stat-count">0</div><div class="text-sm text-gray-500">Invoices</div></div>
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-blue-600" id="stat-total">$0</div><div class="text-sm text-gray-500">Total Invoiced</div></div>
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-yellow-600" id="stat-out">$0</div><div class="text-sm text-gray-500">Outstanding</div></div>
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-green-600" id="stat-paid">0</div><div class="text-sm text-gray-500">Paid</div></div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Client</label>
+          <select id="f-client" class="border border-gray-300 rounded-lg px-3 py-2" onchange="loadInvoices()"><option value="">All</option></select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select id="f-status" class="border border-gray-300 rounded-lg px-3 py-2" onchange="loadInvoices()">
+            <option value="">All</option><option value="draft">Draft</option><option value="sent">Sent</option><option value="paid">Paid</option><option value="void">Void</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+            <tr>
+              <th class="text-left px-4 py-3">Invoice #</th>
+              <th class="text-left px-4 py-3">Client</th>
+              <th class="text-left px-4 py-3">Period</th>
+              <th class="text-left px-4 py-3">Total</th>
+              <th class="text-left px-4 py-3">Status</th>
+              <th class="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="hidden text-center py-12 text-gray-500">
+          <i class="fas fa-file-invoice text-4xl mb-3 text-gray-300"></i>
+          <p>No invoices yet.</p>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600">
+          <span id="page-info"></span>
+          <div class="space-x-2">
+            <button id="prev" onclick="changePage(-1)" class="px-3 py-1 border rounded disabled:opacity-40">Prev</button>
+            <button id="next" onclick="changePage(1)" class="px-3 py-1 border rounded disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Generate Modal -->
+    <div id="gen-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 class="text-lg font-semibold">Generate Invoice</h3>
+          <button onclick="closeGenerate()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Client *</label>
+            <select id="g-client" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Period start *</label><input id="g-start" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+            <div><label class="block text-sm font-medium text-gray-700 mb-1">Period end *</label><input id="g-end" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+          </div>
+          <div><label class="block text-sm font-medium text-gray-700 mb-1">Due date</label><input id="g-due" type="date" class="w-full border border-gray-300 rounded-lg px-3 py-2" /></div>
+          <p class="text-xs text-gray-500"><i class="fas fa-info-circle"></i> Charges are computed from the client's rates: storage (current stock), handling &amp; transaction (movements in the period), plus the base fee.</p>
+        </div>
+        <div class="px-6 py-4 border-t flex justify-end space-x-3">
+          <button onclick="closeGenerate()" class="px-4 py-2 border rounded-lg">Cancel</button>
+          <button onclick="submitGenerate()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Generate</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Modal -->
+    <div id="view-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 id="v-title" class="text-lg font-semibold">Invoice</h3>
+          <button onclick="closeView()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6">
+          <div id="v-meta" class="text-sm text-gray-600 mb-4"></div>
+          <table class="w-full text-sm mb-4">
+            <thead class="text-gray-500 text-xs uppercase border-b"><tr><th class="text-left py-2">Description</th><th class="text-right py-2">Qty</th><th class="text-right py-2">Rate</th><th class="text-right py-2">Amount</th></tr></thead>
+            <tbody id="v-lines"></tbody>
+            <tfoot><tr class="border-t font-semibold"><td class="py-2" colspan="3">Total</td><td class="text-right py-2" id="v-total"></td></tr></tfoot>
+          </table>
+        </div>
+        <div class="px-6 py-4 border-t flex justify-end">
+          <button onclick="closeView()" class="px-4 py-2 border rounded-lg">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message-container" class="hidden fixed top-4 right-4 z-50"><div id="message"></div></div>
+
+    <script>
+      const API_BASE_URL = "/api";
+      let currentUser = null, currentPage = 1, totalPages = 1, clients = [];
+      const getAuthToken = () => localStorage.getItem("guardian_access_token");
+      const isGuardian = () => currentUser && currentUser.role === "guardian-admin";
+      const money = (n) => `$${Number(n || 0).toFixed(2)}`;
+
+      function showMessage(msg, type = "error") {
+        const c = document.getElementById("message-container"), m = document.getElementById("message");
+        m.textContent = msg;
+        const colors = { success: "bg-green-100 text-green-800 border-green-200", info: "bg-blue-100 text-blue-800 border-blue-200", error: "bg-red-100 text-red-800 border-red-200" };
+        m.className = `p-4 rounded-lg shadow-lg border max-w-sm ${colors[type] || colors.error}`;
+        c.classList.remove("hidden"); setTimeout(() => c.classList.add("hidden"), 4000);
+      }
+      async function api(path, options = {}) {
+        const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers: { "Content-Type": "application/json", Authorization: `Bearer ${getAuthToken()}`, ...(options.headers || {}) } });
+        return { ok: res.ok, data: await res.json().catch(() => ({})) };
+      }
+      function logout() { ["guardian_access_token","guardian_refresh_token","guardian_user"].forEach((k) => localStorage.removeItem(k)); window.location.href = "/"; }
+
+      async function init() {
+        if (!getAuthToken()) return (window.location.href = "/");
+        const { ok, data } = await api("/auth/verify");
+        if (!ok || !data.success) return (window.location.href = "/");
+        currentUser = data.data.user;
+        document.getElementById("user-name").textContent = `${currentUser.firstName} ${currentUser.lastName}`;
+        if (isGuardian()) {
+          document.getElementById("oversight-banner").classList.remove("hidden");
+          document.getElementById("gen-btn").classList.add("hidden");
+        }
+        await loadClients();
+        loadStatistics();
+        loadInvoices();
+      }
+
+      async function loadClients() {
+        const { ok, data } = await api("/clients?limit=100");
+        if (ok && data.success) {
+          clients = data.data.clients;
+          const opts = clients.map((c) => `<option value="${c._id}">${c.name}</option>`).join("");
+          document.getElementById("f-client").innerHTML = `<option value="">All</option>` + opts;
+          document.getElementById("g-client").innerHTML = opts || `<option value="">(no clients — add one first)</option>`;
+        }
+      }
+      async function loadStatistics() {
+        const { ok, data } = await api("/invoices/statistics");
+        if (ok && data.success) {
+          document.getElementById("stat-count").textContent = data.data.count;
+          document.getElementById("stat-total").textContent = money(data.data.totalInvoiced);
+          document.getElementById("stat-out").textContent = money(data.data.outstanding);
+          document.getElementById("stat-paid").textContent = data.data.paidCount;
+        }
+      }
+
+      const statusBadge = (s) => {
+        const map = { draft: "bg-gray-100 text-gray-700", sent: "bg-blue-100 text-blue-700", paid: "bg-green-100 text-green-700", void: "bg-red-100 text-red-600" };
+        return `<span class="px-2 py-0.5 rounded text-xs ${map[s] || "bg-gray-100"}">${s}</span>`;
+      };
+
+      async function loadInvoices() {
+        const params = new URLSearchParams({ page: currentPage, limit: 10 });
+        const cl = document.getElementById("f-client").value, st = document.getElementById("f-status").value;
+        if (cl) params.set("clientBusinessId", cl);
+        if (st) params.set("status", st);
+        const { ok, data } = await api(`/invoices?${params}`);
+        const tbody = document.getElementById("tbody"), empty = document.getElementById("empty");
+        if (!ok || !data.success) return showMessage(data.error || "Failed to load");
+        const list = data.data.invoices; totalPages = data.data.pagination.pages || 1;
+        if (!list.length) { tbody.innerHTML = ""; empty.classList.remove("hidden"); }
+        else {
+          empty.classList.add("hidden");
+          tbody.innerHTML = list.map((inv) => {
+            const clName = inv.clientBusinessId && inv.clientBusinessId.name ? inv.clientBusinessId.name : "—";
+            const period = inv.periodStart ? `${inv.periodStart} → ${inv.periodEnd}` : "—";
+            let actions = `<button onclick='viewInvoice(${JSON.stringify(inv).replace(/'/g,"&#39;")})' class="text-gray-600 hover:text-gray-900" title="View"><i class="fas fa-eye"></i></button>`;
+            if (!isGuardian()) {
+              if (inv.status === "draft") actions += ` <button onclick="setStatus('${inv._id}','sent')" class="text-blue-600 hover:text-blue-800" title="Mark sent"><i class="fas fa-paper-plane"></i></button>`;
+              if (inv.status === "draft" || inv.status === "sent") actions += ` <button onclick="setStatus('${inv._id}','paid')" class="text-green-600 hover:text-green-800" title="Mark paid"><i class="fas fa-check"></i></button>`;
+              if (inv.status !== "void") actions += ` <button onclick="removeInvoice('${inv._id}','${inv.invoiceNumber}')" class="text-red-600 hover:text-red-800" title="Delete/Void"><i class="fas fa-trash"></i></button>`;
+            }
+            return `<tr class="border-t hover:bg-gray-50">
+              <td class="px-4 py-3 font-medium">${inv.invoiceNumber}</td>
+              <td class="px-4 py-3">${clName}</td>
+              <td class="px-4 py-3 text-xs">${period}</td>
+              <td class="px-4 py-3 font-medium">${money(inv.total)}</td>
+              <td class="px-4 py-3">${statusBadge(inv.status)}</td>
+              <td class="px-4 py-3 text-right space-x-1">${actions}</td>
+            </tr>`;
+          }).join("");
+        }
+        document.getElementById("page-info").textContent = `Page ${currentPage} of ${totalPages} · ${data.data.pagination.total} total`;
+        document.getElementById("prev").disabled = currentPage <= 1;
+        document.getElementById("next").disabled = currentPage >= totalPages;
+      }
+      function changePage(d) { currentPage = Math.min(Math.max(1, currentPage + d), totalPages); loadInvoices(); }
+
+      // Generate
+      function openGenerate() {
+        document.getElementById("g-start").value = "";
+        document.getElementById("g-end").value = "";
+        document.getElementById("g-due").value = "";
+        document.getElementById("gen-modal").classList.remove("hidden");
+      }
+      function closeGenerate() { document.getElementById("gen-modal").classList.add("hidden"); }
+      async function submitGenerate() {
+        const body = {
+          clientBusinessId: document.getElementById("g-client").value,
+          periodStart: document.getElementById("g-start").value,
+          periodEnd: document.getElementById("g-end").value,
+          dueAt: document.getElementById("g-due").value || null,
+        };
+        if (!body.clientBusinessId) return showMessage("Select a client");
+        if (!body.periodStart || !body.periodEnd) return showMessage("Enter the billing period");
+        const { ok, data } = await api("/invoices/generate", { method: "POST", body: JSON.stringify(body) });
+        if (ok && data.success) { showMessage(data.message || "Invoice generated", "success"); closeGenerate(); loadInvoices(); loadStatistics(); }
+        else showMessage(data.error || "Generation failed");
+      }
+
+      // View
+      function viewInvoice(inv) {
+        document.getElementById("v-title").textContent = inv.invoiceNumber;
+        const cl = inv.clientBusinessId && inv.clientBusinessId.name ? inv.clientBusinessId.name : "—";
+        document.getElementById("v-meta").innerHTML =
+          `<div>Client: <span class="font-medium text-gray-900">${cl}</span></div>
+           <div>Period: ${inv.periodStart || "—"} → ${inv.periodEnd || "—"}</div>
+           <div>Status: ${statusBadge(inv.status)}</div>`;
+        document.getElementById("v-lines").innerHTML = (inv.lineItems || []).map((l) =>
+          `<tr class="border-b"><td class="py-2">${l.description}</td><td class="text-right py-2">${l.quantity}</td><td class="text-right py-2">${money(l.rate)}</td><td class="text-right py-2">${money(l.amount)}</td></tr>`
+        ).join("") || `<tr><td colspan="4" class="py-3 text-gray-400">No charges</td></tr>`;
+        document.getElementById("v-total").textContent = money(inv.total);
+        document.getElementById("view-modal").classList.remove("hidden");
+      }
+      function closeView() { document.getElementById("view-modal").classList.add("hidden"); }
+
+      async function setStatus(id, status) {
+        const { ok, data } = await api(`/invoices/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) });
+        if (ok && data.success) { showMessage(data.message, "success"); loadInvoices(); loadStatistics(); }
+        else showMessage(data.error || "Update failed");
+      }
+      async function removeInvoice(id, num) {
+        if (!confirm(`Delete/void invoice ${num}?`)) return;
+        const { ok, data } = await api(`/invoices/${id}`, { method: "DELETE" });
+        if (ok && data.success) { showMessage(data.message, "success"); loadInvoices(); loadStatistics(); }
+        else showMessage(data.error || "Delete failed");
+      }
+
+      init();
+    </script>
+  </body>
+</html>
