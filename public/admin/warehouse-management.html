@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Warehouse Management - GUARDIAN</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+  </head>
+  <body class="bg-gray-50">
+    <!-- Header -->
+    <div class="bg-white shadow-sm border-b">
+      <div class="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
+        <div class="flex items-center space-x-4">
+          <div class="text-2xl font-bold text-purple-600">
+            <i class="fas fa-shield-alt mr-2"></i>GUARDIAN
+          </div>
+          <span class="text-gray-400">|</span>
+          <h1 class="text-xl font-semibold text-gray-800">Warehouse Management</h1>
+        </div>
+        <div class="flex items-center space-x-4 text-sm">
+          <a href="/admin/admin-dashboard.html" class="text-gray-600 hover:text-gray-900">
+            <i class="fas fa-arrow-left mr-1"></i>Dashboard
+          </a>
+          <a href="/admin/inventory-management.html" class="text-gray-600 hover:text-gray-900">
+            <i class="fas fa-boxes-stacked mr-1"></i>Inventory
+          </a>
+          <span id="user-name" class="font-medium text-gray-700">Loading...</span>
+          <button onclick="logout()" class="text-red-600 hover:text-red-700">
+            <i class="fas fa-sign-out-alt"></i> Sign Out
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <h2 class="text-2xl font-bold text-gray-900">Warehouses</h2>
+          <p class="text-gray-600">Manage storage facilities across the platform</p>
+        </div>
+        <button
+          onclick="openAddModal()"
+          class="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+        >
+          <i class="fas fa-plus mr-2"></i>Add Warehouse
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-white rounded-xl shadow-sm p-5">
+          <div class="text-3xl font-bold text-gray-900" id="stat-total">0</div>
+          <div class="text-sm text-gray-500">Total Warehouses</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5">
+          <div class="text-3xl font-bold text-green-600" id="stat-active">0</div>
+          <div class="text-sm text-gray-500">Active</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5">
+          <div class="text-3xl font-bold text-blue-600" id="stat-items">0</div>
+          <div class="text-sm text-gray-500">Items Stored</div>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-5">
+          <div class="text-3xl font-bold text-indigo-600" id="stat-capacity">0</div>
+          <div class="text-sm text-gray-500">Total Capacity (units)</div>
+        </div>
+      </div>
+
+      <!-- Filters -->
+      <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
+        <div class="flex-1 min-w-48">
+          <label class="block text-xs font-medium text-gray-600 mb-1">Search</label>
+          <input id="f-search" type="text" placeholder="Name or code"
+            class="w-full border border-gray-300 rounded-lg px-3 py-2" oninput="debouncedLoad()" />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Status</label>
+          <select id="f-status" class="border border-gray-300 rounded-lg px-3 py-2" onchange="loadWarehouses()">
+            <option value="">All</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="maintenance">Maintenance</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-gray-600 mb-1">Type</label>
+          <select id="f-type" class="border border-gray-300 rounded-lg px-3 py-2" onchange="loadWarehouses()">
+            <option value="">All</option>
+            <option value="ambient">Ambient</option>
+            <option value="refrigerated">Refrigerated</option>
+            <option value="frozen">Frozen</option>
+            <option value="hazmat">Hazmat</option>
+            <option value="mixed">Mixed</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+        <table class="w-full text-sm">
+          <thead class="bg-gray-50 text-gray-500 uppercase text-xs">
+            <tr>
+              <th class="text-left px-4 py-3">Warehouse</th>
+              <th class="text-left px-4 py-3">Type</th>
+              <th class="text-left px-4 py-3">Items</th>
+              <th class="text-left px-4 py-3">Capacity</th>
+              <th class="text-left px-4 py-3">Status</th>
+              <th class="text-right px-4 py-3">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="tbody"></tbody>
+        </table>
+        <div id="empty" class="hidden text-center py-12 text-gray-500">
+          <i class="fas fa-warehouse text-4xl mb-3 text-gray-300"></i>
+          <p>No warehouses yet. Click "Add Warehouse" to create one.</p>
+        </div>
+        <div class="flex items-center justify-between px-4 py-3 border-t text-sm text-gray-600">
+          <span id="page-info"></span>
+          <div class="space-x-2">
+            <button id="prev" onclick="changePage(-1)" class="px-3 py-1 border rounded disabled:opacity-40">Prev</button>
+            <button id="next" onclick="changePage(1)" class="px-3 py-1 border rounded disabled:opacity-40">Next</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Modal -->
+    <div id="modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 id="modal-title" class="text-lg font-semibold">Add Warehouse</h3>
+          <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+          <input type="hidden" id="w-id" />
+          <div id="company-wrap" class="hidden">
+            <label class="block text-sm font-medium text-gray-700 mb-1">Storage Company *</label>
+            <select id="w-company" class="w-full border border-gray-300 rounded-lg px-3 py-2"></select>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <input id="w-name" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Code</label>
+              <input id="w-code" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select id="w-type" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="mixed">Mixed</option>
+                <option value="ambient">Ambient</option>
+                <option value="refrigerated">Refrigerated</option>
+                <option value="frozen">Frozen</option>
+                <option value="hazmat">Hazmat</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+              <select id="w-status" class="w-full border border-gray-300 rounded-lg px-3 py-2">
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="maintenance">Maintenance</option>
+              </select>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Square Footage</label>
+              <input id="w-sqft" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Capacity (units)</label>
+              <input id="w-cap" type="number" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea id="w-desc" rows="2" class="w-full border border-gray-300 rounded-lg px-3 py-2"></textarea>
+          </div>
+        </div>
+        <div class="px-6 py-4 border-t flex justify-end space-x-3">
+          <button onclick="closeModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
+          <button onclick="save()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message-container" class="hidden fixed top-4 right-4 z-50">
+      <div id="message"></div>
+    </div>
+
+    <script>
+      const API_BASE_URL = "/api";
+      let currentUser = null;
+      let currentPage = 1;
+      let totalPages = 1;
+      let searchTimeout = null;
+      let companies = [];
+
+      const getAuthToken = () => localStorage.getItem("guardian_access_token");
+
+      function showMessage(msg, type = "error") {
+        const c = document.getElementById("message-container");
+        const m = document.getElementById("message");
+        m.textContent = msg;
+        const colors = {
+          success: "bg-green-100 text-green-800 border-green-200",
+          info: "bg-blue-100 text-blue-800 border-blue-200",
+          error: "bg-red-100 text-red-800 border-red-200",
+        };
+        m.className = `p-4 rounded-lg shadow-lg border max-w-sm ${colors[type] || colors.error}`;
+        c.classList.remove("hidden");
+        setTimeout(() => c.classList.add("hidden"), 4000);
+      }
+
+      async function api(path, options = {}) {
+        const res = await fetch(`${API_BASE_URL}${path}`, {
+          ...options,
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getAuthToken()}`,
+            ...(options.headers || {}),
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        return { ok: res.ok, data };
+      }
+
+      function logout() {
+        localStorage.removeItem("guardian_access_token");
+        localStorage.removeItem("guardian_refresh_token");
+        localStorage.removeItem("guardian_user");
+        window.location.href = "/";
+      }
+
+      async function init() {
+        const token = getAuthToken();
+        if (!token) return (window.location.href = "/");
+        const { ok, data } = await api("/auth/verify");
+        if (!ok || !data.success) return (window.location.href = "/");
+        currentUser = data.data.user;
+        document.getElementById("user-name").textContent =
+          `${currentUser.firstName} ${currentUser.lastName}`;
+        if (currentUser.role === "guardian-admin") {
+          document.getElementById("company-wrap").classList.remove("hidden");
+          await loadCompanies();
+        }
+        loadStatistics();
+        loadWarehouses();
+      }
+
+      async function loadCompanies() {
+        const { ok, data } = await api("/companies?limit=100&status=active");
+        if (ok && data.success) {
+          companies = data.data.companies;
+          const sel = document.getElementById("w-company");
+          sel.innerHTML = companies.length
+            ? companies.map((c) => `<option value="${c._id}">${c.name}</option>`).join("")
+            : `<option value="">(no active companies — create one first)</option>`;
+        }
+      }
+
+      async function loadStatistics() {
+        const { ok, data } = await api("/warehouses/statistics");
+        if (ok && data.success) {
+          document.getElementById("stat-total").textContent = data.data.totalWarehouses;
+          document.getElementById("stat-active").textContent = data.data.activeWarehouses;
+          document.getElementById("stat-items").textContent = data.data.totalItems;
+          document.getElementById("stat-capacity").textContent =
+            (data.data.totalCapacity || 0).toLocaleString();
+        }
+      }
+
+      function debouncedLoad() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => { currentPage = 1; loadWarehouses(); }, 350);
+      }
+
+      function typeBadge(t) {
+        const map = {
+          ambient: "bg-gray-100 text-gray-700", refrigerated: "bg-blue-100 text-blue-700",
+          frozen: "bg-cyan-100 text-cyan-700", hazmat: "bg-orange-100 text-orange-700",
+          mixed: "bg-purple-100 text-purple-700",
+        };
+        return `<span class="px-2 py-0.5 rounded text-xs ${map[t] || "bg-gray-100"}">${t}</span>`;
+      }
+      function statusBadge(s) {
+        const map = {
+          active: "bg-green-100 text-green-700", inactive: "bg-gray-100 text-gray-600",
+          maintenance: "bg-yellow-100 text-yellow-700",
+        };
+        return `<span class="px-2 py-0.5 rounded text-xs ${map[s] || "bg-gray-100"}">${s}</span>`;
+      }
+
+      async function loadWarehouses() {
+        const params = new URLSearchParams({ page: currentPage, limit: 10 });
+        const s = document.getElementById("f-search").value.trim();
+        const st = document.getElementById("f-status").value;
+        const ty = document.getElementById("f-type").value;
+        if (s) params.set("search", s);
+        if (st) params.set("status", st);
+        if (ty) params.set("warehouseType", ty);
+
+        const { ok, data } = await api(`/warehouses?${params}`);
+        const tbody = document.getElementById("tbody");
+        const empty = document.getElementById("empty");
+        if (!ok || !data.success) { showMessage(data.error || "Failed to load"); return; }
+
+        const list = data.data.warehouses;
+        totalPages = data.data.pagination.pages || 1;
+        if (!list.length) {
+          tbody.innerHTML = "";
+          empty.classList.remove("hidden");
+        } else {
+          empty.classList.add("hidden");
+          tbody.innerHTML = list.map((w) => `
+            <tr class="border-t hover:bg-gray-50">
+              <td class="px-4 py-3">
+                <div class="font-medium text-gray-900">${w.name}</div>
+                <div class="text-xs text-gray-500">${w.code || ""}</div>
+              </td>
+              <td class="px-4 py-3">${typeBadge(w.warehouseType)}</td>
+              <td class="px-4 py-3">${w.itemCount ?? 0}</td>
+              <td class="px-4 py-3">${w.capacityUnits ? w.capacityUnits.toLocaleString() : "—"}</td>
+              <td class="px-4 py-3">${statusBadge(w.status)}</td>
+              <td class="px-4 py-3 text-right space-x-2">
+                <button onclick='openEditModal(${JSON.stringify(w).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800"><i class="fas fa-pen"></i></button>
+                <button onclick="removeWarehouse('${w._id}','${w.name.replace(/'/g, "&#39;")}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>
+              </td>
+            </tr>`).join("");
+        }
+        document.getElementById("page-info").textContent =
+          `Page ${currentPage} of ${totalPages} · ${data.data.pagination.total} total`;
+        document.getElementById("prev").disabled = currentPage <= 1;
+        document.getElementById("next").disabled = currentPage >= totalPages;
+      }
+
+      function changePage(d) {
+        currentPage = Math.min(Math.max(1, currentPage + d), totalPages);
+        loadWarehouses();
+      }
+
+      function openAddModal() {
+        document.getElementById("modal-title").textContent = "Add Warehouse";
+        document.getElementById("w-id").value = "";
+        ["w-name","w-code","w-sqft","w-cap","w-desc"].forEach((i) => (document.getElementById(i).value = ""));
+        document.getElementById("w-type").value = "mixed";
+        document.getElementById("w-status").value = "active";
+        document.getElementById("modal").classList.remove("hidden");
+      }
+
+      function openEditModal(w) {
+        document.getElementById("modal-title").textContent = "Edit Warehouse";
+        document.getElementById("w-id").value = w._id;
+        document.getElementById("w-name").value = w.name || "";
+        document.getElementById("w-code").value = w.code || "";
+        document.getElementById("w-type").value = w.warehouseType || "mixed";
+        document.getElementById("w-status").value = w.status || "active";
+        document.getElementById("w-sqft").value = w.squareFootage || "";
+        document.getElementById("w-cap").value = w.capacityUnits || "";
+        document.getElementById("w-desc").value = w.description || "";
+        document.getElementById("modal").classList.remove("hidden");
+      }
+
+      function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+
+      async function save() {
+        const id = document.getElementById("w-id").value;
+        const body = {
+          name: document.getElementById("w-name").value.trim(),
+          code: document.getElementById("w-code").value.trim(),
+          warehouseType: document.getElementById("w-type").value,
+          status: document.getElementById("w-status").value,
+          squareFootage: parseInt(document.getElementById("w-sqft").value) || null,
+          capacityUnits: parseInt(document.getElementById("w-cap").value) || null,
+          description: document.getElementById("w-desc").value.trim(),
+        };
+        if (!body.name) return showMessage("Name is required");
+        if (currentUser.role === "guardian-admin" && !id) {
+          body.storageCompanyId = document.getElementById("w-company").value;
+          if (!body.storageCompanyId) return showMessage("Select a storage company");
+        }
+        const { ok, data } = id
+          ? await api(`/warehouses/${id}`, { method: "PUT", body: JSON.stringify(body) })
+          : await api("/warehouses", { method: "POST", body: JSON.stringify(body) });
+        if (ok && data.success) {
+          showMessage(id ? "Warehouse updated" : "Warehouse created", "success");
+          closeModal();
+          loadWarehouses();
+          loadStatistics();
+        } else {
+          showMessage(data.error || "Save failed");
+        }
+      }
+
+      async function removeWarehouse(id, name) {
+        if (!confirm(`Deactivate warehouse "${name}"?`)) return;
+        const { ok, data } = await api(`/warehouses/${id}`, { method: "DELETE" });
+        if (ok && data.success) { showMessage("Warehouse deactivated", "success"); loadWarehouses(); loadStatistics(); }
+        else showMessage(data.error || "Delete failed");
+      }
+
+      init();
+    </script>
+  </body>
+</html>

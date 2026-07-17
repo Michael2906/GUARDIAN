@@ -85,6 +85,8 @@ const twoFactorRoutes = require("./routes/twoFactor");
 const pushNotificationRoutes = require("./routes/pushNotifications");
 const userRoutes = require("./routes/users");
 const companyRoutes = require("./routes/companies");
+const warehouseRoutes = require("./routes/warehouses");
+const inventoryRoutes = require("./routes/inventory");
 
 // Mount routes
 app.use("/api/registration", registrationRoutes);
@@ -94,6 +96,8 @@ app.use("/api/2fa", twoFactorRoutes);
 app.use("/api/push", pushNotificationRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
+app.use("/api/warehouses", warehouseRoutes);
+app.use("/api/inventory", inventoryRoutes);
 
 // Debug route
 app.get("/api/debug", (req, res) => {

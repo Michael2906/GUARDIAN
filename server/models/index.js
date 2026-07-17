@@ -6,6 +6,7 @@ const StorageCompany = require("./Company")(sequelize);
 const ClientBusiness = require("./ClientBusiness")(sequelize);
 const InventoryItem = require("./InventoryItem")(sequelize);
 const Warehouse = require("./Warehouse")(sequelize);
+const StockMovement = require("./StockMovement")(sequelize);
 
 /**
  * Associations. `constraints: false` avoids physical FK creation (and the
@@ -42,6 +43,31 @@ InventoryItem.belongsTo(StorageCompany, {
   as: "storageCompany",
   constraints: false,
 });
+InventoryItem.belongsTo(Warehouse, {
+  foreignKey: "warehouseId",
+  as: "warehouse",
+  constraints: false,
+});
+InventoryItem.belongsTo(ClientBusiness, {
+  foreignKey: "clientBusinessId",
+  as: "clientBusiness",
+  constraints: false,
+});
+InventoryItem.hasMany(StockMovement, {
+  foreignKey: "inventoryItemId",
+  as: "movements",
+  constraints: false,
+});
+StockMovement.belongsTo(InventoryItem, {
+  foreignKey: "inventoryItemId",
+  as: "item",
+  constraints: false,
+});
+Warehouse.hasMany(InventoryItem, {
+  foreignKey: "warehouseId",
+  as: "items",
+  constraints: false,
+});
 
 /**
  * Create/patch tables. Safe to run on every boot for exploration.
@@ -62,4 +88,5 @@ module.exports = {
   ClientBusiness,
   InventoryItem,
   Warehouse,
+  StockMovement,
 };
