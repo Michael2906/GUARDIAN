@@ -1,5 +1,5 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, StorageCompany } = require("../models");
 
 /**
  * JWT Authentication Middleware
@@ -41,9 +41,9 @@ const authenticateToken = async (req, res, next) => {
     }
 
     // Verify user still exists and is active
-    const user = await User.findById(decoded.userId).populate(
-      "storageCompanyId"
-    );
+    const user = await User.findByPk(decoded.userId, {
+      include: [{ model: StorageCompany, as: "storageCompany" }],
+    });
     if (!user || !user.isActive) {
       return res.status(401).json({
         success: false,
@@ -51,20 +51,9 @@ const authenticateToken = async (req, res, next) => {
       });
     }
 
-    // Check if password was changed after token was issued (if this field exists)
-    if (
-      user.passwordChangedAt &&
-      user.passwordChangedAt > new Date(decoded.iat * 1000)
-    ) {
-      return res.status(401).json({
-        success: false,
-        error: "Password was changed. Please log in again.",
-      });
-    }
-
     // Check if storage company is still active (for non-guardian users)
-    if (decoded.role !== "guardian-admin" && user.storageCompanyId) {
-      if (user.storageCompanyId.registrationStatus !== "active") {
+    if (decoded.role !== "guardian-admin" && user.storageCompany) {
+      if (user.storageCompany.registrationStatus !== "active") {
         return res.status(401).json({
           success: false,
           error: "Storage company is inactive",
@@ -222,9 +211,9 @@ const optionalAuth = async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.userId).populate(
-        "storageCompanyId"
-      );
+      const user = await User.findByPk(decoded.userId, {
+        include: [{ model: StorageCompany, as: "storageCompany" }],
+      });
 
       if (user && user.isActive) {
         req.user = {
@@ -257,51 +246,12 @@ const optionalAuth = async (req, res, next) => {
  * Supports API key authentication for storage companies
  */
 const authenticateAPIKey = async (req, res, next) => {
-  try {
-    const apiKey = req.headers["x-api-key"];
-
-    if (!apiKey) {
-      return res.status(401).json({
-        success: false,
-        error: "API key required",
-      });
-    }
-
-    // Find storage company by API key
-    const { Company } = require("../models");
-    const company = await Company.findOne({
-      "apiKeys.key": apiKey,
-      "apiKeys.isActive": true,
-      isActive: true,
-    });
-
-    if (!company) {
-      return res.status(401).json({
-        success: false,
-        error: "Invalid API key",
-      });
-    }
-
-    // Add company info to request
-    req.apiAuth = {
-      storageCompanyId: company._id,
-      companyName: company.name,
-      apiKeyUsed: apiKey,
-    };
-
-    // Add tenant filter for data isolation
-    req.tenantFilter = {
-      storageCompanyId: company._id,
-    };
-
-    next();
-  } catch (error) {
-    console.error("API key authentication error:", error);
-    res.status(500).json({
-      success: false,
-      error: "API authentication failed",
-    });
-  }
+  // API-key authentication is not implemented in the Azure SQL build (no route
+  // uses it yet). Reject clearly rather than query a non-existent column.
+  return res.status(501).json({
+    success: false,
+    error: "API key authentication is not available in this build",
+  });
 };
 
 /**

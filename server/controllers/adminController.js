@@ -1,56 +1,41 @@
-const { StorageCompany, User } = require("../models");
+const crypto = require("crypto");
+const { Op } = require("sequelize");
+const { StorageCompany } = require("../models");
 
 /**
- * Get company billing details (admin only)
+ * Billing / custom-pricing admin controller (Azure SQL edition).
+ * `guardianBilling` is stored as a JSON column; we manipulate it as a plain
+ * object and reassign it so the model persists the change on save.
  */
+
+const activeAdjustmentTotal = (billing) => {
+  const adjustments = billing?.customPricing?.adjustments || [];
+  return adjustments
+    .filter((adj) => adj.isActive && (!adj.expiresAt || new Date(adj.expiresAt) > new Date()))
+    .reduce((sum, adj) => sum + (adj.amount || 0), 0);
+};
+
 const getCompanyBilling = async (req, res) => {
   try {
-    const { companyId } = req.params;
-
-    const company = await StorageCompany.findById(companyId)
-      .select("name email guardianBilling platformLimits registrationStatus")
-      .lean();
-
+    const company = await StorageCompany.findByPk(req.params.companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    // Calculate current effective rate
-    let effectiveRate = company.guardianBilling.monthlyRecurringRevenue || 0;
-
-    if (company.guardianBilling.customPricing?.isCustomPlan) {
-      effectiveRate =
-        company.guardianBilling.customPricing.customMonthlyRate ||
-        effectiveRate;
-
-      // Apply active adjustments
-      const activeAdjustments =
-        company.guardianBilling.customPricing.adjustments?.filter(
-          (adj) =>
-            adj.isActive && (!adj.expiresAt || adj.expiresAt > new Date())
-        ) || [];
-
-      const totalAdjustments = activeAdjustments.reduce(
-        (sum, adj) => sum + adj.amount,
-        0
-      );
-      effectiveRate += totalAdjustments;
+    const billing = company.guardianBilling || {};
+    let effectiveRate = billing.monthlyRecurringRevenue || 0;
+    if (billing.customPricing?.isCustomPlan) {
+      effectiveRate = billing.customPricing.customMonthlyRate || effectiveRate;
+      effectiveRate += activeAdjustmentTotal(billing);
     }
 
     res.json({
       success: true,
       data: {
-        company: {
-          id: company._id,
-          name: company.name,
-          email: company.email,
-        },
-        billing: company.guardianBilling,
+        company: { id: company.id, name: company.name, email: company.email },
+        billing,
         limits: company.platformLimits,
-        effectiveMonthlyRate: Math.max(0, effectiveRate), // Ensure not negative
+        effectiveMonthlyRate: Math.max(0, effectiveRate),
         status: company.registrationStatus,
       },
     });
@@ -63,19 +48,9 @@ const getCompanyBilling = async (req, res) => {
   }
 };
 
-/**
- * Set custom pricing for a company
- */
 const setCustomPricing = async (req, res) => {
   try {
-    const { companyId } = req.params;
-    const {
-      customMonthlyRate,
-      customYearlyRate,
-      billingCycle = "monthly",
-      dealInfo,
-      reason,
-    } = req.body;
+    const { customMonthlyRate, customYearlyRate, billingCycle = "monthly", dealInfo, reason } = req.body;
 
     if (!customMonthlyRate || customMonthlyRate < 0) {
       return res.status(400).json({
@@ -84,63 +59,53 @@ const setCustomPricing = async (req, res) => {
       });
     }
 
-    const company = await StorageCompany.findById(companyId);
-
+    const company = await StorageCompany.findByPk(req.params.companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    // Set custom pricing
-    company.guardianBilling.planName = "custom";
-    company.guardianBilling.monthlyRecurringRevenue = customMonthlyRate;
-    company.guardianBilling.customPricing = {
+    const billing = company.guardianBilling || {};
+    const existing = billing.customPricing || {};
+    billing.planName = "custom";
+    billing.monthlyRecurringRevenue = customMonthlyRate;
+    billing.customPricing = {
       isCustomPlan: true,
       customMonthlyRate,
       customYearlyRate: customYearlyRate || customMonthlyRate * 12,
       billingCycle,
-      adjustments: company.guardianBilling.customPricing?.adjustments || [],
+      adjustments: existing.adjustments || [],
       dealInfo: {
-        ...company.guardianBilling.customPricing?.dealInfo,
+        ...(existing.dealInfo || {}),
         ...dealInfo,
         contractStartDate: dealInfo?.contractStartDate
           ? new Date(dealInfo.contractStartDate)
           : new Date(),
-        contractEndDate: dealInfo?.contractEndDate
-          ? new Date(dealInfo.contractEndDate)
-          : null,
+        contractEndDate: dealInfo?.contractEndDate ? new Date(dealInfo.contractEndDate) : null,
       },
     };
-
-    // Add audit log for the pricing change
-    if (!company.guardianBilling.customPricing.adjustments) {
-      company.guardianBilling.customPricing.adjustments = [];
-    }
-
-    company.guardianBilling.customPricing.adjustments.push({
+    billing.customPricing.adjustments.push({
+      id: crypto.randomUUID(),
       type: "manual-adjustment",
-      amount: 0, // No additional amount, just logging the base rate change
+      amount: 0,
       description: `Custom pricing set: $${customMonthlyRate}/month`,
       reason: reason || "Custom pricing agreement",
-      appliedBy: req.user?.id, // Will be set by auth middleware later
+      appliedBy: req.user?.id,
       appliedAt: new Date(),
       isRecurring: false,
       isActive: true,
     });
 
+    company.guardianBilling = billing;
     await company.save();
 
     res.json({
       success: true,
       message: "Custom pricing set successfully",
       data: {
-        companyId: company._id,
-        planName: company.guardianBilling.planName,
+        companyId: company.id,
+        planName: billing.planName,
         customMonthlyRate,
-        customYearlyRate:
-          company.guardianBilling.customPricing.customYearlyRate,
+        customYearlyRate: billing.customPricing.customYearlyRate,
         billingCycle,
       },
     });
@@ -153,20 +118,9 @@ const setCustomPricing = async (req, res) => {
   }
 };
 
-/**
- * Add billing adjustment (discount, credit, fee, etc.)
- */
 const addBillingAdjustment = async (req, res) => {
   try {
-    const { companyId } = req.params;
-    const {
-      type,
-      amount,
-      description,
-      reason,
-      isRecurring = false,
-      expiresAt,
-    } = req.body;
+    const { type, amount, description, reason, isRecurring = false, expiresAt } = req.body;
 
     if (!type || !amount || !description) {
       return res.status(400).json({
@@ -174,69 +128,41 @@ const addBillingAdjustment = async (req, res) => {
         error: "Type, amount, and description are required",
       });
     }
-
-    if (
-      !["discount", "credit", "fee", "refund", "manual-adjustment"].includes(
-        type
-      )
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: "Invalid adjustment type",
-      });
+    if (!["discount", "credit", "fee", "refund", "manual-adjustment"].includes(type)) {
+      return res.status(400).json({ success: false, error: "Invalid adjustment type" });
     }
 
-    const company = await StorageCompany.findById(companyId);
-
+    const company = await StorageCompany.findByPk(req.params.companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    // Initialize custom pricing if not exists
-    if (!company.guardianBilling.customPricing) {
-      company.guardianBilling.customPricing = {
-        isCustomPlan: true,
-        adjustments: [],
-      };
-    }
+    const billing = company.guardianBilling || {};
+    if (!billing.customPricing) billing.customPricing = { isCustomPlan: true, adjustments: [] };
+    if (!billing.customPricing.adjustments) billing.customPricing.adjustments = [];
 
-    if (!company.guardianBilling.customPricing.adjustments) {
-      company.guardianBilling.customPricing.adjustments = [];
-    }
-
-    // Add the adjustment
     const adjustment = {
+      id: crypto.randomUUID(),
       type,
       amount: parseFloat(amount),
       description,
       reason,
-      appliedBy: req.user?.id, // Will be set by auth middleware later
+      appliedBy: req.user?.id,
       appliedAt: new Date(),
       isRecurring,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       isActive: true,
     };
+    billing.customPricing.adjustments.push(adjustment);
+    billing.customPricing.isCustomPlan = true;
 
-    company.guardianBilling.customPricing.adjustments.push(adjustment);
-    company.guardianBilling.customPricing.isCustomPlan = true;
-
+    company.guardianBilling = billing;
     await company.save();
 
     res.json({
       success: true,
       message: "Billing adjustment added successfully",
-      data: {
-        companyId: company._id,
-        adjustment: {
-          ...adjustment,
-          id: company.guardianBilling.customPricing.adjustments[
-            company.guardianBilling.customPricing.adjustments.length - 1
-          ]._id,
-        },
-      },
+      data: { companyId: company.id, adjustment },
     });
   } catch (error) {
     console.error("Add billing adjustment error:", error);
@@ -247,51 +173,33 @@ const addBillingAdjustment = async (req, res) => {
   }
 };
 
-/**
- * Remove or deactivate billing adjustment
- */
 const removeBillingAdjustment = async (req, res) => {
   try {
     const { companyId, adjustmentId } = req.params;
-
-    const company = await StorageCompany.findById(companyId);
-
+    const company = await StorageCompany.findByPk(companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    if (!company.guardianBilling.customPricing?.adjustments) {
-      return res.status(404).json({
-        success: false,
-        error: "No adjustments found",
-      });
+    const billing = company.guardianBilling || {};
+    const adjustments = billing.customPricing?.adjustments;
+    if (!adjustments) {
+      return res.status(404).json({ success: false, error: "No adjustments found" });
     }
 
-    const adjustment =
-      company.guardianBilling.customPricing.adjustments.id(adjustmentId);
-
+    const adjustment = adjustments.find((a) => a.id === adjustmentId);
     if (!adjustment) {
-      return res.status(404).json({
-        success: false,
-        error: "Adjustment not found",
-      });
+      return res.status(404).json({ success: false, error: "Adjustment not found" });
     }
 
-    // Deactivate instead of removing for audit trail
     adjustment.isActive = false;
-
+    company.guardianBilling = billing;
     await company.save();
 
     res.json({
       success: true,
       message: "Billing adjustment removed successfully",
-      data: {
-        companyId: company._id,
-        adjustmentId,
-      },
+      data: { companyId: company.id, adjustmentId },
     });
   } catch (error) {
     console.error("Remove billing adjustment error:", error);
@@ -302,52 +210,29 @@ const removeBillingAdjustment = async (req, res) => {
   }
 };
 
-/**
- * Get all companies with custom pricing (admin overview)
- */
 const getCustomPricingOverview = async (req, res) => {
   try {
-    const companies = await StorageCompany.find({
-      "guardianBilling.customPricing.isCustomPlan": true,
-    })
-      .select(
-        "name email guardianBilling.planName guardianBilling.monthlyRecurringRevenue guardianBilling.customPricing"
-      )
-      .lean();
+    const companies = await StorageCompany.findAll({
+      where: { guardianBilling: { [Op.like]: '%"isCustomPlan":true%' } },
+    });
 
     const overview = companies.map((company) => {
-      let effectiveRate = company.guardianBilling.monthlyRecurringRevenue || 0;
-
-      // Calculate effective rate with adjustments
-      if (company.guardianBilling.customPricing?.adjustments) {
-        const activeAdjustments =
-          company.guardianBilling.customPricing.adjustments.filter(
-            (adj) =>
-              adj.isActive &&
-              (!adj.expiresAt || new Date(adj.expiresAt) > new Date())
-          );
-
-        const totalAdjustments = activeAdjustments.reduce(
-          (sum, adj) => sum + adj.amount,
-          0
-        );
-        effectiveRate += totalAdjustments;
-      }
+      const billing = company.guardianBilling || {};
+      let effectiveRate = billing.monthlyRecurringRevenue || 0;
+      effectiveRate += activeAdjustmentTotal(billing);
 
       return {
-        companyId: company._id,
+        companyId: company.id,
         name: company.name,
         email: company.email,
-        planName: company.guardianBilling.planName,
-        standardRate: company.guardianBilling.monthlyRecurringRevenue,
+        planName: billing.planName,
+        standardRate: billing.monthlyRecurringRevenue,
         effectiveRate: Math.max(0, effectiveRate),
         hasActiveAdjustments:
-          company.guardianBilling.customPricing?.adjustments?.some(
-            (adj) =>
-              adj.isActive &&
-              (!adj.expiresAt || new Date(adj.expiresAt) > new Date())
+          (billing.customPricing?.adjustments || []).some(
+            (adj) => adj.isActive && (!adj.expiresAt || new Date(adj.expiresAt) > new Date())
           ) || false,
-        dealInfo: company.guardianBilling.customPricing?.dealInfo,
+        dealInfo: billing.customPricing?.dealInfo,
       };
     });
 
@@ -356,10 +241,7 @@ const getCustomPricingOverview = async (req, res) => {
       data: {
         totalCustomPricingClients: overview.length,
         companies: overview,
-        totalMonthlyRevenue: overview.reduce(
-          (sum, company) => sum + company.effectiveRate,
-          0
-        ),
+        totalMonthlyRevenue: overview.reduce((sum, c) => sum + c.effectiveRate, 0),
       },
     });
   } catch (error) {

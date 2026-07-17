@@ -1,5 +1,4 @@
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
@@ -61,22 +60,14 @@ app.use((req, res, next) => {
 // Serve static files
 app.use(express.static(path.join(__dirname, "../public")));
 
-// Database Connection
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(() => {
-    console.log("✅ Connected to MongoDB");
-  })
-  .catch((err) => {
-    console.error("❌ MongoDB connection error:", err);
-    process.exit(1);
-  });
-
-// Load Models
-require("./models");
-
-// Load Models
-const { Company, User, InventoryItem } = require("./models");
+// Load Models (Azure SQL / Sequelize)
+const {
+  sequelize,
+  syncDatabase,
+  Company,
+  User,
+  InventoryItem,
+} = require("./models");
 
 // API Routes
 const registrationRoutes = require("./routes/registration");
@@ -114,13 +105,9 @@ app.get("/api/health", (req, res) => {
 app.get("/api/test/models", async (req, res) => {
   try {
     const stats = {
-      companies: await Company.countDocuments(),
-      users: await User.countDocuments(),
-      inventoryItems: await InventoryItem.countDocuments(),
-      collections: mongoose.connection.db
-        .listCollections()
-        .toArray()
-        .then((cols) => cols.map((c) => c.name)),
+      companies: await Company.count(),
+      users: await User.count(),
+      inventoryItems: await InventoryItem.count(),
     };
 
     res.json({
@@ -185,12 +172,26 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-  console.log(`🚀 GUARDIAN server running on http://localhost:${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-  console.log(
-    `🔒 Security features enabled: CORS, Rate Limiting, Security Headers`
-  );
-});
+async function start() {
+  try {
+    await sequelize.authenticate();
+    console.log("✅ Connected to Azure SQL Database");
+    await syncDatabase();
+    console.log("✅ Database schema synchronised");
+  } catch (err) {
+    console.error("❌ Azure SQL connection/sync error:", err.message);
+    process.exit(1);
+  }
+
+  app.listen(PORT, () => {
+    console.log(`🚀 GUARDIAN server running on http://localhost:${PORT}`);
+    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+    console.log(
+      `🔒 Security features enabled: CORS, Rate Limiting, Security Headers`
+    );
+  });
+}
+
+start();
 
 module.exports = app;

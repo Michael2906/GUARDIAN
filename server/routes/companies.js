@@ -1,140 +1,70 @@
 const express = require("express");
 const router = express.Router();
-const { authenticateToken, requirePermission } = require("../middleware/auth");
+const { Op } = require("sequelize");
+const { authenticateToken } = require("../middleware/auth");
 const { StorageCompany, User } = require("../models");
 
+const guardianOnly = (req, res) => {
+  if (req.user.role !== "guardian-admin") {
+    res.status(403).json({
+      success: false,
+      error: "Access denied. GUARDIAN admin privileges required.",
+    });
+    return false;
+  }
+  return true;
+};
+
+const withUserCount = async (companyInstance) => {
+  const userCount = await User.count({
+    where: { storageCompanyId: companyInstance.id, isActive: true },
+  });
+  return { ...companyInstance.toJSON(), userCount };
+};
+
 /**
- * GET /api/companies
- * Get all storage companies (GUARDIAN admin only)
+ * GET /api/companies — list (GUARDIAN admin only)
  */
 router.get("/", authenticateToken, async (req, res) => {
   try {
-    // Only GUARDIAN admins can view all companies
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
+    if (!guardianOnly(req, res)) return;
 
-    const {
-      page = 1,
-      limit = 20,
-      search,
-      companyType,
-      status,
-      billingStatus,
-    } = req.query;
+    const { page = 1, limit = 20, search, companyType, status } = req.query;
 
-    // Build query
-    let query = {};
-
+    const where = {};
     if (search) {
-      query.$or = [
-        { name: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-        { slug: { $regex: search, $options: "i" } },
+      where[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { email: { [Op.like]: `%${search}%` } },
+        { slug: { [Op.like]: `%${search}%` } },
       ];
     }
+    if (companyType) where.companyType = companyType;
+    if (status) where.registrationStatus = status;
 
-    if (companyType) {
-      query.companyType = companyType;
-    }
+    const offset = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-    if (status) {
-      query.registrationStatus = status;
-    }
+    const { rows, count: totalCount } = await StorageCompany.findAndCountAll({
+      where,
+      order: [["createdAt", "DESC"]],
+      offset,
+      limit: parseInt(limit, 10),
+    });
 
-    if (billingStatus) {
-      query["billing.status"] = billingStatus;
-    }
+    const companies = await Promise.all(rows.map(withUserCount));
 
-    const skip = (page - 1) * limit;
-
-    console.log("Companies API - Query:", query);
-    console.log("Companies API - Page:", page, "Limit:", limit);
-
-    let companies, totalCount;
-    try {
-      [companies, totalCount] = await Promise.all([
-        StorageCompany.find(query)
-          .select("-billing.stripeCustomerId -billing.paymentMethods")
-          .sort({ createdAt: -1 })
-          .skip(skip)
-          .limit(parseInt(limit))
-          .lean(),
-        StorageCompany.countDocuments(query),
-      ]);
-
-      console.log(
-        "Companies found:",
-        companies.length,
-        "Total count:",
-        totalCount
-      );
-      console.log("Raw companies:", companies);
-    } catch (dbError) {
-      console.error("Database query error:", dbError);
-      throw dbError;
-    }
-
-    // Get user counts for each company
-    let companiesWithUserCounts;
-    try {
-      console.log(
-        "Starting user count mapping for",
-        companies.length,
-        "companies"
-      );
-      companiesWithUserCounts = await Promise.all(
-        companies.map(async (company) => {
-          try {
-            const userCount = await User.countDocuments({
-              storageCompanyId: company._id,
-              isActive: true,
-            });
-            return {
-              ...company,
-              status: company.registrationStatus,
-              userCount,
-            };
-          } catch (userError) {
-            console.error(
-              "Error counting users for company",
-              company._id,
-              userError
-            );
-            return {
-              ...company,
-              status: company.registrationStatus,
-              userCount: 0,
-            };
-          }
-        })
-      );
-      console.log("User count mapping completed");
-    } catch (mappingError) {
-      console.error("User count mapping error:", mappingError);
-      companiesWithUserCounts = companies.map((c) => ({ ...c, userCount: 0 }));
-    }
-
-    console.log("Companies with user counts:", companiesWithUserCounts.length);
-
-    const responseData = {
+    res.json({
       success: true,
       data: {
-        companies: companiesWithUserCounts,
+        companies,
         pagination: {
-          page: parseInt(page),
-          limit: parseInt(limit),
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
           total: totalCount,
           pages: Math.ceil(totalCount / limit),
         },
       },
-    };
-
-    console.log("Final API response:", JSON.stringify(responseData, null, 2));
-    res.json(responseData);
+    });
   } catch (error) {
     console.error("Get companies error:", error);
     res.status(500).json({
@@ -146,34 +76,25 @@ router.get("/", authenticateToken, async (req, res) => {
 
 /**
  * GET /api/companies/statistics
- * Get company statistics for dashboard
  */
 router.get("/statistics", authenticateToken, async (req, res) => {
   try {
-    // Only GUARDIAN admins can view statistics
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
+    if (!guardianOnly(req, res)) return;
 
-    const [
-      totalCompanies,
-      activeCompanies,
-      pendingCompanies,
-      totalCompanyUsers,
-    ] = await Promise.all([
-      StorageCompany.countDocuments(),
-      StorageCompany.countDocuments({ registrationStatus: "active" }),
-      StorageCompany.countDocuments({ registrationStatus: "pending" }),
-      User.countDocuments({
-        userType: {
-          $in: ["storage-admin", "storage-manager", "storage-employee"],
-        },
-        isActive: true,
-      }),
-    ]);
+    const [totalCompanies, activeCompanies, pendingCompanies, totalCompanyUsers] =
+      await Promise.all([
+        StorageCompany.count(),
+        StorageCompany.count({ where: { registrationStatus: "active" } }),
+        StorageCompany.count({ where: { registrationStatus: "pending" } }),
+        User.count({
+          where: {
+            userType: {
+              [Op.in]: ["storage-admin", "storage-manager", "storage-employee"],
+            },
+            isActive: true,
+          },
+        }),
+      ]);
 
     res.json({
       success: true,
@@ -195,17 +116,10 @@ router.get("/statistics", authenticateToken, async (req, res) => {
 
 /**
  * POST /api/companies
- * Create a new storage company
  */
 router.post("/", authenticateToken, async (req, res) => {
   try {
-    // Only GUARDIAN admins can create companies
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
+    if (!guardianOnly(req, res)) return;
 
     const {
       name,
@@ -219,7 +133,6 @@ router.post("/", authenticateToken, async (req, res) => {
       address,
     } = req.body;
 
-    // Validation
     if (!name || !slug || !contactName || !email || !companyType) {
       return res.status(400).json({
         success: false,
@@ -227,47 +140,35 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    // Check for duplicate slug
-    const existingSlug = await StorageCompany.findOne({ slug });
-    if (existingSlug) {
-      return res.status(400).json({
-        success: false,
-        error: "Company slug already exists",
-      });
+    if (await StorageCompany.findOne({ where: { slug: slug.toLowerCase().trim() } })) {
+      return res.status(400).json({ success: false, error: "Company slug already exists" });
+    }
+    if (await StorageCompany.findOne({ where: { email: email.toLowerCase().trim() } })) {
+      return res.status(400).json({ success: false, error: "Company email already exists" });
     }
 
-    // Check for duplicate email
-    const existingEmail = await StorageCompany.findOne({ email });
-    if (existingEmail) {
-      return res.status(400).json({
-        success: false,
-        error: "Company email already exists",
-      });
-    }
-
-    // Create company
-    const company = new StorageCompany({
+    const company = await StorageCompany.create({
       name: name.trim(),
       slug: slug.toLowerCase().trim(),
       contactName: contactName.trim(),
       email: email.toLowerCase().trim(),
-      phone: phone?.trim(),
+      phone: phone ? phone.trim() : null,
       companyType,
       guardianPlan,
       registrationStatus: status,
+      isActive: status === "active",
       address: address || {},
       createdBy: req.user.userId,
       lastModifiedBy: req.user.userId,
     });
-
-    await company.save();
 
     res.status(201).json({
       success: true,
       message: "Storage company created successfully",
       data: {
         company: {
-          id: company._id,
+          id: company.id,
+          _id: company.id,
           name: company.name,
           slug: company.slug,
           email: company.email,
@@ -279,95 +180,47 @@ router.post("/", authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error("Create company error:", error);
-
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
+    if (error.name === "SequelizeUniqueConstraintError") {
+      const field = error.errors?.[0]?.path || "field";
       return res.status(400).json({
         success: false,
         error: `Company ${field} already exists`,
       });
     }
-
-    res.status(500).json({
-      success: false,
-      error: "Failed to create company",
-    });
+    res.status(500).json({ success: false, error: "Failed to create company" });
   }
 });
 
 /**
  * GET /api/companies/:companyId
- * Get a specific company
  */
 router.get("/:companyId", authenticateToken, async (req, res) => {
   try {
-    const { companyId } = req.params;
+    if (!guardianOnly(req, res)) return;
 
-    // Only GUARDIAN admins can view company details
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
-
-    const company = await StorageCompany.findById(companyId)
-      .populate("createdBy", "firstName lastName email")
-      .populate("lastModifiedBy", "firstName lastName email");
-
+    const company = await StorageCompany.findByPk(req.params.companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    // Get user count
-    const userCount = await User.countDocuments({
-      storageCompanyId: companyId,
-      isActive: true,
-    });
-
-    res.json({
-      success: true,
-      data: {
-        company: {
-          ...company.toObject(),
-          userCount,
-        },
-      },
-    });
+    res.json({ success: true, data: { company: await withUserCount(company) } });
   } catch (error) {
     console.error("Get company error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to retrieve company",
-    });
+    res.status(500).json({ success: false, error: "Failed to retrieve company" });
   }
 });
 
 /**
  * PUT /api/companies/:companyId
- * Update a storage company
  */
 router.put("/:companyId", authenticateToken, async (req, res) => {
   try {
+    if (!guardianOnly(req, res)) return;
+
     const { companyId } = req.params;
-
-    // Only GUARDIAN admins can update companies
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
-
-    const company = await StorageCompany.findById(companyId);
+    const company = await StorageCompany.findByPk(companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
     const {
@@ -382,115 +235,73 @@ router.put("/:companyId", authenticateToken, async (req, res) => {
       address,
     } = req.body;
 
-    // Check for duplicate slug (excluding current company)
     if (slug && slug !== company.slug) {
-      const existingSlug = await StorageCompany.findOne({
-        slug,
-        _id: { $ne: companyId },
+      const dup = await StorageCompany.findOne({
+        where: { slug, id: { [Op.ne]: companyId } },
       });
-      if (existingSlug) {
-        return res.status(400).json({
-          success: false,
-          error: "Company slug already exists",
-        });
+      if (dup) {
+        return res.status(400).json({ success: false, error: "Company slug already exists" });
+      }
+    }
+    if (email && email.toLowerCase() !== company.email) {
+      const dup = await StorageCompany.findOne({
+        where: { email: email.toLowerCase(), id: { [Op.ne]: companyId } },
+      });
+      if (dup) {
+        return res.status(400).json({ success: false, error: "Company email already exists" });
       }
     }
 
-    // Check for duplicate email (excluding current company)
-    if (email && email !== company.email) {
-      const existingEmail = await StorageCompany.findOne({
-        email,
-        _id: { $ne: companyId },
-      });
-      if (existingEmail) {
-        return res.status(400).json({
-          success: false,
-          error: "Company email already exists",
-        });
-      }
-    }
-
-    // Update company
-    const updateData = {
-      lastModifiedBy: req.user.userId,
-      updatedAt: new Date(),
-    };
-
-    if (name) updateData.name = name.trim();
-    if (slug) updateData.slug = slug.toLowerCase().trim();
-    if (contactName) updateData.contactName = contactName.trim();
-    if (email) updateData.email = email.toLowerCase().trim();
-    if (phone !== undefined) updateData.phone = phone?.trim();
-    if (companyType) updateData.companyType = companyType;
-    if (guardianPlan) updateData.guardianPlan = guardianPlan;
+    if (name) company.name = name.trim();
+    if (slug) company.slug = slug.toLowerCase().trim();
+    if (contactName) company.contactName = contactName.trim();
+    if (email) company.email = email.toLowerCase().trim();
+    if (phone !== undefined) company.phone = phone ? phone.trim() : null;
+    if (companyType) company.companyType = companyType;
+    if (guardianPlan) company.guardianPlan = guardianPlan;
     if (status) {
-      updateData.registrationStatus = status;
-      // Sync isActive field with registrationStatus
-      updateData.isActive = status === "active";
+      company.registrationStatus = status;
+      company.isActive = status === "active";
     }
-    if (address) updateData.address = { ...company.address, ...address };
+    if (address) company.address = { ...company.address, ...address };
+    company.lastModifiedBy = req.user.userId;
 
-    const updatedCompany = await StorageCompany.findByIdAndUpdate(
-      companyId,
-      updateData,
-      { new: true, runValidators: true }
-    );
+    await company.save();
 
     res.json({
       success: true,
       message: "Company updated successfully",
-      data: {
-        company: updatedCompany,
-      },
+      data: { company: company.toJSON() },
     });
   } catch (error) {
     console.error("Update company error:", error);
-
-    if (error.code === 11000) {
-      const field = Object.keys(error.keyPattern)[0];
+    if (error.name === "SequelizeUniqueConstraintError") {
+      const field = error.errors?.[0]?.path || "field";
       return res.status(400).json({
         success: false,
         error: `Company ${field} already exists`,
       });
     }
-
-    res.status(500).json({
-      success: false,
-      error: "Failed to update company",
-    });
+    res.status(500).json({ success: false, error: "Failed to update company" });
   }
 });
 
 /**
- * DELETE /api/companies/:companyId
- * Delete a storage company (soft delete)
+ * DELETE /api/companies/:companyId — soft delete (suspend)
  */
 router.delete("/:companyId", authenticateToken, async (req, res) => {
   try {
+    if (!guardianOnly(req, res)) return;
+
     const { companyId } = req.params;
-
-    // Only GUARDIAN admins can delete companies
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
-
-    const company = await StorageCompany.findById(companyId);
+    const company = await StorageCompany.findByPk(companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
-    // Check if company has active users
-    const activeUsers = await User.countDocuments({
-      storageCompanyId: companyId,
-      isActive: true,
+    const activeUsers = await User.count({
+      where: { storageCompanyId: companyId, isActive: true },
     });
-
     if (activeUsers > 0) {
       return res.status(400).json({
         success: false,
@@ -498,118 +309,75 @@ router.delete("/:companyId", authenticateToken, async (req, res) => {
       });
     }
 
-    // Soft delete - set status to inactive
-    await StorageCompany.findByIdAndUpdate(companyId, {
-      registrationStatus: "suspended",
-      lastModifiedBy: req.user.userId,
-      deletedAt: new Date(),
-    });
+    company.registrationStatus = "suspended";
+    company.isActive = false;
+    company.deletedAt = new Date();
+    company.lastModifiedBy = req.user.userId;
+    await company.save();
 
-    res.json({
-      success: true,
-      message: "Company deactivated successfully",
-    });
+    res.json({ success: true, message: "Company deactivated successfully" });
   } catch (error) {
     console.error("Delete company error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to delete company",
-    });
+    res.status(500).json({ success: false, error: "Failed to delete company" });
   }
 });
 
 /**
  * POST /api/companies/:companyId/activate
- * Activate a storage company
  */
 router.post("/:companyId/activate", authenticateToken, async (req, res) => {
   try {
-    const { companyId } = req.params;
+    if (!guardianOnly(req, res)) return;
 
-    // Only GUARDIAN admins can activate companies
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
-
-    const company = await StorageCompany.findByIdAndUpdate(
-      companyId,
-      {
-        registrationStatus: "active",
-        lastModifiedBy: req.user.userId,
-      },
-      { new: true }
-    );
-
+    const company = await StorageCompany.findByPk(req.params.companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
+
+    company.registrationStatus = "active";
+    company.isActive = true;
+    company.lastModifiedBy = req.user.userId;
+    await company.save();
 
     res.json({
       success: true,
       message: "Company activated successfully",
-      data: { company },
+      data: { company: company.toJSON() },
     });
   } catch (error) {
     console.error("Activate company error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to activate company",
-    });
+    res.status(500).json({ success: false, error: "Failed to activate company" });
   }
 });
 
 /**
  * POST /api/companies/:companyId/suspend
- * Suspend a storage company
  */
 router.post("/:companyId/suspend", authenticateToken, async (req, res) => {
   try {
-    const { companyId } = req.params;
+    if (!guardianOnly(req, res)) return;
+
     const { reason } = req.body;
-
-    // Only GUARDIAN admins can suspend companies
-    if (req.user.role !== "guardian-admin") {
-      return res.status(403).json({
-        success: false,
-        error: "Access denied. GUARDIAN admin privileges required.",
-      });
-    }
-
-    const company = await StorageCompany.findByIdAndUpdate(
-      companyId,
-      {
-        registrationStatus: "suspended",
-        suspensionReason: reason,
-        suspendedAt: new Date(),
-        lastModifiedBy: req.user.userId,
-      },
-      { new: true }
-    );
-
+    const company = await StorageCompany.findByPk(req.params.companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
+
+    company.registrationStatus = "suspended";
+    company.isActive = false;
+    company.suspensionReason = reason;
+    company.suspendedAt = new Date();
+    company.lastModifiedBy = req.user.userId;
+    await company.save();
 
     res.json({
       success: true,
       message: "Company suspended successfully",
-      data: { company },
+      data: { company: company.toJSON() },
     });
   } catch (error) {
     console.error("Suspend company error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to suspend company",
-    });
+    res.status(500).json({ success: false, error: "Failed to suspend company" });
   }
 });
 

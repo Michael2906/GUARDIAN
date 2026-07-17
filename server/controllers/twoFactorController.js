@@ -17,7 +17,7 @@ const generate2FASetup = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -96,7 +96,7 @@ const verifyAndEnable2FA = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -184,7 +184,7 @@ const disable2FA = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId).select("+password");
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -272,7 +272,7 @@ const verify2FAToken = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
     if (!user || !user.isActive) {
       return res.status(404).json({
         success: false,
@@ -353,9 +353,7 @@ const get2FAStatus = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const user = await User.findById(userId).select(
-      "twoFactorAuth.enabled twoFactorAuth.lastUsedAt twoFactorAuth.backupCodes"
-    );
+    const user = await User.findByPk(userId);
 
     if (!user) {
       return res.status(404).json({
@@ -401,7 +399,7 @@ const regenerateBackupCodes = async (req, res) => {
       });
     }
 
-    const user = await User.findById(userId).select("+password");
+    const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({
         success: false,

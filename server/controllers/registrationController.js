@@ -1,5 +1,5 @@
-const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
+const { Op } = require("sequelize");
 const { StorageCompany, User } = require("../models");
 
 /**
@@ -9,44 +9,36 @@ const generateSlug = (name) => {
   return name
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, "") // Remove special characters
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Replace multiple hyphens with single
-    .substring(0, 50); // Limit length
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .substring(0, 50);
 };
 
 /**
- * Check if company name or email is already taken
+ * Check if company name / email / slug is available
  */
 const checkAvailability = async (req, res) => {
   try {
     const { name, email, slug } = req.query;
-
     const checks = {};
 
     if (name) {
-      const nameExists = await StorageCompany.findOne({
-        name: { $regex: new RegExp(`^${name}$`, "i") },
-      });
-      checks.nameAvailable = !nameExists;
+      const exists = await StorageCompany.findOne({ where: { name } });
+      checks.nameAvailable = !exists;
     }
-
     if (email) {
-      const emailExists = await StorageCompany.findOne({
-        email: email.toLowerCase(),
+      const exists = await StorageCompany.findOne({
+        where: { email: email.toLowerCase() },
       });
-      checks.emailAvailable = !emailExists;
+      checks.emailAvailable = !exists;
     }
-
     if (slug) {
-      const slugExists = await StorageCompany.findOne({ slug });
-      checks.slugAvailable = !slugExists;
+      const exists = await StorageCompany.findOne({ where: { slug } });
+      checks.slugAvailable = !exists;
     }
 
-    res.json({
-      success: true,
-      checks,
-    });
+    res.json({ success: true, checks });
   } catch (error) {
     console.error("Availability check error:", error);
     res.status(500).json({
@@ -57,44 +49,30 @@ const checkAvailability = async (req, res) => {
 };
 
 /**
- * Register a new storage company
+ * Register a new storage company (self-service onboarding)
  */
 const registerCompany = async (req, res) => {
   try {
     const {
-      // Company Information
       companyName,
       companyType = "3pl-provider",
-      businessTaxId,
-      yearsInBusiness,
-
-      // Contact Information
       companyEmail,
       companyPhone,
-
-      // Address
       street,
       city,
       state,
       zipCode,
       country = "USA",
-
-      // Admin User
       adminFirstName,
       adminLastName,
       adminEmail,
       adminPassword,
-
-      // Business Details
       estimatedWarehouseCount = 1,
       estimatedClientCount = 10,
-
-      // Optional
       website,
       description,
     } = req.body;
 
-    // Validation
     if (!companyName || !companyEmail || !adminEmail || !adminPassword) {
       return res.status(400).json({
         success: false,
@@ -102,22 +80,15 @@ const registerCompany = async (req, res) => {
           "Missing required fields: companyName, companyEmail, adminEmail, adminPassword",
       });
     }
-
     if (!adminFirstName || !adminLastName) {
       return res.status(400).json({
         success: false,
         error: "Admin user first name and last name are required",
       });
     }
-
     if (!street || !city || !state || !zipCode) {
-      return res.status(400).json({
-        success: false,
-        error: "Complete address is required",
-      });
+      return res.status(400).json({ success: false, error: "Complete address is required" });
     }
-
-    // Password validation
     if (adminPassword.length < 8) {
       return res.status(400).json({
         success: false,
@@ -125,14 +96,9 @@ const registerCompany = async (req, res) => {
       });
     }
 
-    // Check for existing company with same name or email
     const existingCompany = await StorageCompany.findOne({
-      $or: [
-        { name: { $regex: new RegExp(`^${companyName}$`, "i") } },
-        { email: companyEmail.toLowerCase() },
-      ],
+      where: { [Op.or]: [{ name: companyName }, { email: companyEmail.toLowerCase() }] },
     });
-
     if (existingCompany) {
       return res.status(409).json({
         success: false,
@@ -140,11 +106,9 @@ const registerCompany = async (req, res) => {
       });
     }
 
-    // Check for existing user with admin email
     const existingUser = await User.findOne({
-      email: adminEmail.toLowerCase(),
+      where: { email: adminEmail.toLowerCase() },
     });
-
     if (existingUser) {
       return res.status(409).json({
         success: false,
@@ -152,60 +116,38 @@ const registerCompany = async (req, res) => {
       });
     }
 
-    // Generate unique slug
-    let baseSlug = generateSlug(companyName);
+    // Unique slug
+    const baseSlug = generateSlug(companyName);
     let slug = baseSlug;
     let counter = 1;
-
-    while (await StorageCompany.findOne({ slug })) {
+    while (await StorageCompany.findOne({ where: { slug } })) {
       slug = `${baseSlug}-${counter}`;
-      counter++;
+      counter += 1;
     }
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Create storage company
-    const storageCompany = new StorageCompany({
+    const storageCompany = await StorageCompany.create({
       name: companyName,
       slug,
       companyType,
       email: companyEmail.toLowerCase(),
       phone: companyPhone,
-
-      address: {
-        street,
-        city,
-        state,
-        zipCode,
-        country,
-      },
-
-      businessInfo: {
-        taxId: businessTaxId,
-        yearsInBusiness: yearsInBusiness
-          ? parseInt(yearsInBusiness)
-          : undefined,
-        website,
-        description,
-      },
-
+      address: { street, city, state, zipCode, country, website, description },
       platformLimits: {
-        maxWarehouses: Math.max(estimatedWarehouseCount, 2), // Basic plan starts at 2 warehouses
-        maxClients: Math.max(estimatedClientCount, 50), // Basic plan supports up to 50 clients
-        maxUsers: 10, // Basic plan allows 10 users
-        maxStorageGB: 10000, // 10GB default for basic plan
+        maxWarehouses: Math.max(estimatedWarehouseCount, 2),
+        maxClientBusinesses: Math.max(estimatedClientCount, 50),
+        maxUsersTotal: 10,
+        maxStorageGB: 10000,
       },
-
-      // Set up 14-day trial period for all new companies
       guardianBilling: {
         planName: "basic",
         billingStatus: "trial",
-        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 14 days from now
-        monthlyRecurringRevenue: 99, // Basic plan price
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        monthlyRecurringRevenue: 99,
+        customPricing: { isCustomPlan: false, adjustments: [] },
       },
-
       registrationStatus: "pending",
       verificationToken,
       verificationExpires,
@@ -213,76 +155,31 @@ const registerCompany = async (req, res) => {
       isVerified: false,
     });
 
-    await storageCompany.save();
-
-    // Hash admin password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(adminPassword, saltRounds);
-
-    // Create admin user (but don't activate until email verified)
-    const adminUser = new User({
-      storageCompanyId: storageCompany._id,
+    // Admin user — plaintext password, hashed once by the model hook.
+    await User.create({
+      storageCompanyId: storageCompany.id,
       userType: "storage-admin",
-
       email: adminEmail.toLowerCase(),
-      password: hashedPassword,
-
+      password: adminPassword,
       firstName: adminFirstName,
       lastName: adminLastName,
-
-      profile: {
-        phone: companyPhone, // Use company phone as default
-      },
-
-      permissions: {
-        canManageUsers: true,
-        canManageClients: true,
-        canManageInventory: true,
-        canManageWarehouses: true,
-        canViewReports: true,
-        canManageBilling: true,
-        canManageSettings: true,
-        dataAccessLevel: "full",
-      },
-
-      isActive: false, // Will be activated after email verification
-      emailVerified: false,
+      isActive: false,
+      isEmailVerified: false,
     });
-
-    await adminUser.save();
-
-    // TODO: Send verification email
-    // For now, we'll return the verification token for testing
 
     res.status(201).json({
       success: true,
       message:
         "Storage company registration initiated. Please check email for verification.",
       data: {
-        companyId: storageCompany._id,
+        companyId: storageCompany.id,
         companySlug: slug,
-        // Include verification token for testing - remove in production
         verificationToken:
-          process.env.NODE_ENV === "development"
-            ? verificationToken
-            : undefined,
+          process.env.NODE_ENV === "development" ? verificationToken : undefined,
       },
     });
   } catch (error) {
     console.error("Company registration error:", error);
-
-    // Handle specific validation errors
-    if (error.name === "ValidationError") {
-      const validationErrors = Object.values(error.errors).map(
-        (err) => err.message
-      );
-      return res.status(400).json({
-        success: false,
-        error: "Validation error",
-        details: validationErrors,
-      });
-    }
-
     res.status(500).json({
       success: false,
       error: "Server error during registration",
@@ -296,7 +193,6 @@ const registerCompany = async (req, res) => {
 const verifyEmail = async (req, res) => {
   try {
     const { token } = req.params;
-
     if (!token) {
       return res.status(400).json({
         success: false,
@@ -304,11 +200,12 @@ const verifyEmail = async (req, res) => {
       });
     }
 
-    // Find company with valid token
     const company = await StorageCompany.findOne({
-      verificationToken: token,
-      verificationExpires: { $gt: new Date() },
-      registrationStatus: "pending",
+      where: {
+        verificationToken: token,
+        verificationExpires: { [Op.gt]: new Date() },
+        registrationStatus: "pending",
+      },
     });
 
     if (!company) {
@@ -318,23 +215,15 @@ const verifyEmail = async (req, res) => {
       });
     }
 
-    // Update company status
     company.registrationStatus = "email-verified";
     company.isVerified = true;
-    company.verificationToken = undefined;
-    company.verificationExpires = undefined;
+    company.verificationToken = null;
+    company.verificationExpires = null;
     await company.save();
 
-    // Activate admin user
-    await User.updateOne(
-      {
-        storageCompanyId: company._id,
-        userType: "storage-admin",
-      },
-      {
-        isActive: true,
-        emailVerified: true,
-      }
+    await User.update(
+      { isActive: true, isEmailVerified: true },
+      { where: { storageCompanyId: company.id, userType: "storage-admin" } }
     );
 
     res.json({
@@ -342,7 +231,7 @@ const verifyEmail = async (req, res) => {
       message:
         "Email verified successfully. You can now complete your company setup.",
       data: {
-        companyId: company._id,
+        companyId: company.id,
         companySlug: company.slug,
         nextStep: "setup",
       },
@@ -362,21 +251,11 @@ const verifyEmail = async (req, res) => {
 const completeSetup = async (req, res) => {
   try {
     const { companyId } = req.params;
-    const {
-      step,
-      subscriptionPlan = "basic",
-      initialWarehouse,
-      billingInfo,
-      preferences,
-    } = req.body;
+    const { step, subscriptionPlan = "basic", billingInfo, preferences } = req.body;
 
-    const company = await StorageCompany.findById(companyId);
-
+    const company = await StorageCompany.findByPk(companyId);
     if (!company) {
-      return res.status(404).json({
-        success: false,
-        error: "Company not found",
-      });
+      return res.status(404).json({ success: false, error: "Company not found" });
     }
 
     if (
@@ -389,88 +268,38 @@ const completeSetup = async (req, res) => {
       });
     }
 
-    // Handle different setup steps
+    const planLimits = {
+      basic: { maxWarehouses: 2, maxClientBusinesses: 50, maxUsersTotal: 10, maxStorageGB: 10000, monthlyPrice: 99 },
+      pro: { maxWarehouses: 10, maxClientBusinesses: 250, maxUsersTotal: 50, maxStorageGB: 50000, monthlyPrice: 299 },
+      enterprise: { maxWarehouses: -1, maxClientBusinesses: -1, maxUsersTotal: -1, maxStorageGB: -1, monthlyPrice: 899 },
+    };
+
     switch (step) {
-      case "subscription":
-        // Set subscription plan and limits (All plans are paid)
-        const planLimits = {
-          basic: {
-            maxWarehouses: 2,
-            maxClients: 50,
-            maxUsers: 10,
-            maxStorageGB: 10000,
-            monthlyPrice: 99, // $99/month for basic plan
-            features: [
-              "Multi-client management",
-              "Basic reporting",
-              "Email support",
-              "Standard API access",
-            ],
-          },
-          pro: {
-            maxWarehouses: 10,
-            maxClients: 250,
-            maxUsers: 50,
-            maxStorageGB: 50000,
-            monthlyPrice: 299, // $299/month for pro plan
-            features: [
-              "Advanced reporting",
-              "Priority support",
-              "API webhooks",
-              "Custom integrations",
-              "2FA required",
-            ],
-          },
-          enterprise: {
-            maxWarehouses: -1, // Unlimited
-            maxClients: -1, // Unlimited
-            maxUsers: -1, // Unlimited
-            maxStorageGB: -1, // Unlimited
-            monthlyPrice: 899, // $899/month for enterprise (custom pricing available)
-            features: [
-              "Unlimited everything",
-              "White-label options",
-              "Dedicated support",
-              "Custom development",
-              "SLA guarantees",
-            ],
-          },
-        };
-
+      case "subscription": {
         const limits = planLimits[subscriptionPlan] || planLimits.basic;
-        company.platformLimits = limits;
-        company.guardianBilling.subscriptionId = subscriptionPlan;
-        company.guardianBilling.planName = subscriptionPlan;
-        company.guardianBilling.monthlyRecurringRevenue = limits.monthlyPrice;
+        company.platformLimits = { ...company.platformLimits, ...limits };
+        const billing = company.guardianBilling || {};
+        billing.subscriptionId = subscriptionPlan;
+        billing.planName = subscriptionPlan;
+        billing.monthlyRecurringRevenue = limits.monthlyPrice;
+        company.guardianBilling = billing;
         break;
-
-      case "warehouse":
-        // Initial warehouse setup will be handled separately
-        // Just mark this step as completed
-        break;
-
+      }
       case "billing":
-        // Set up billing information
         if (billingInfo) {
-          company.guardianBilling = {
-            ...company.guardianBilling,
-            ...billingInfo,
-          };
+          company.guardianBilling = { ...company.guardianBilling, ...billingInfo };
         }
         break;
-
       case "preferences":
-        // Set company preferences
         if (preferences) {
           company.settings = { ...company.settings, ...preferences };
         }
         break;
+      default:
+        break;
     }
 
-    // Update setup step
-    company.setupStep = Math.max(company.setupStep, parseInt(step) || 1);
-
-    // If all steps completed, activate company
+    company.setupStep = Math.max(company.setupStep, parseInt(step, 10) || 1);
     if (company.setupStep >= 4) {
       company.registrationStatus = "setup-completed";
       company.isActive = true;
@@ -483,7 +312,7 @@ const completeSetup = async (req, res) => {
       success: true,
       message: `Setup step ${step} completed successfully`,
       data: {
-        companyId: company._id,
+        companyId: company.id,
         currentStep: company.setupStep,
         isComplete: company.onboardingCompleted,
         isActive: company.isActive,
@@ -499,144 +328,23 @@ const completeSetup = async (req, res) => {
 };
 
 /**
- * Get available subscription plans and pricing
+ * Available subscription plans (static)
  */
 const getSubscriptionPlans = async (req, res) => {
-  try {
-    const plans = {
-      basic: {
-        id: "basic",
-        name: "Basic Plan",
-        description: "Perfect for small 3PL operations getting started",
-        monthlyPrice: 99,
-        yearlyPrice: 990, // 2 months free
-        features: [
-          "Up to 2 warehouses",
-          "Up to 50 client businesses",
-          "Up to 10 team members",
-          "10GB storage",
-          "Multi-client management",
-          "Basic reporting & analytics",
-          "Email support",
-          "Standard API access",
-          "Mobile app access",
-        ],
-        limits: {
-          maxWarehouses: 2,
-          maxClients: 50,
-          maxUsers: 10,
-          maxStorageGB: 10000,
-        },
-        popular: false,
-      },
+  const plans = {
+    basic: { id: "basic", name: "Basic Plan", description: "Perfect for small 3PL operations getting started", monthlyPrice: 99, yearlyPrice: 990, features: ["Up to 2 warehouses", "Up to 50 client businesses", "Up to 10 team members", "10GB storage", "Basic reporting & analytics", "Email support"], limits: { maxWarehouses: 2, maxClients: 50, maxUsers: 10, maxStorageGB: 10000 }, popular: false },
+    pro: { id: "pro", name: "Professional Plan", description: "Ideal for growing 3PL companies with multiple clients", monthlyPrice: 299, yearlyPrice: 2990, features: ["Up to 10 warehouses", "Up to 250 client businesses", "Up to 50 team members", "50GB storage", "Advanced reporting", "Priority support", "Two-factor authentication"], limits: { maxWarehouses: 10, maxClients: 250, maxUsers: 50, maxStorageGB: 50000 }, popular: true },
+    enterprise: { id: "enterprise", name: "Enterprise Plan", description: "For large-scale 3PL operations requiring maximum flexibility", monthlyPrice: 899, yearlyPrice: 8990, customPricing: true, features: ["Unlimited warehouses", "Unlimited client businesses", "Unlimited team members", "Unlimited storage", "White-label options", "Dedicated account manager"], limits: { maxWarehouses: -1, maxClients: -1, maxUsers: -1, maxStorageGB: -1 }, popular: false },
+  };
 
-      pro: {
-        id: "pro",
-        name: "Professional Plan",
-        description: "Ideal for growing 3PL companies with multiple clients",
-        monthlyPrice: 299,
-        yearlyPrice: 2990, // 2 months free
-        features: [
-          "Up to 10 warehouses",
-          "Up to 250 client businesses",
-          "Up to 50 team members",
-          "50GB storage",
-          "Advanced reporting & analytics",
-          "Priority email & phone support",
-          "API webhooks",
-          "Custom integrations",
-          "Two-factor authentication",
-          "Advanced user permissions",
-          "Bulk operations",
-          "Export capabilities",
-        ],
-        limits: {
-          maxWarehouses: 10,
-          maxClients: 250,
-          maxUsers: 50,
-          maxStorageGB: 50000,
-        },
-        popular: true,
-      },
-
-      enterprise: {
-        id: "enterprise",
-        name: "Enterprise Plan",
-        description:
-          "For large-scale 3PL operations requiring maximum flexibility",
-        monthlyPrice: 899,
-        yearlyPrice: 8990, // 2 months free
-        customPricing: true,
-        features: [
-          "Unlimited warehouses",
-          "Unlimited client businesses",
-          "Unlimited team members",
-          "Unlimited storage",
-          "White-label options",
-          "Dedicated account manager",
-          "Custom development",
-          "SLA guarantees (99.9% uptime)",
-          "Advanced security features",
-          "Custom reporting",
-          "Priority feature requests",
-          "On-premise deployment options",
-        ],
-        limits: {
-          maxWarehouses: -1, // Unlimited
-          maxClients: -1,
-          maxUsers: -1,
-          maxStorageGB: -1,
-        },
-        popular: false,
-      },
-
-      custom: {
-        id: "custom",
-        name: "Custom Plan",
-        description:
-          "Tailored pricing and features for unique business requirements",
-        monthlyPrice: null, // Set individually
-        yearlyPrice: null,
-        customPricing: true,
-        contactSales: true,
-        features: [
-          "Fully customizable features",
-          "Negotiated pricing",
-          "Custom contract terms",
-          "Flexible billing cycles",
-          "Volume discounts available",
-          "Multi-year agreements",
-          "Custom integrations",
-          "Dedicated implementation team",
-          "Priority support",
-          "Custom SLA agreements",
-        ],
-        limits: {
-          maxWarehouses: "Custom",
-          maxClients: "Custom",
-          maxUsers: "Custom",
-          maxStorageGB: "Custom",
-        },
-        popular: false,
-        hidden: true, // Don't show in public pricing, only for admin use
-      },
-    };
-
-    res.json({
-      success: true,
-      plans: Object.values(plans),
-      trialPeriod: "14 days",
-      currency: "USD",
-      billingNote:
-        "All plans include a 14-day free trial. No credit card required to start.",
-    });
-  } catch (error) {
-    console.error("Get subscription plans error:", error);
-    res.status(500).json({
-      success: false,
-      error: "Server error retrieving subscription plans",
-    });
-  }
+  res.json({
+    success: true,
+    plans: Object.values(plans),
+    trialPeriod: "14 days",
+    currency: "USD",
+    billingNote:
+      "All plans include a 14-day free trial. No credit card required to start.",
+  });
 };
 
 /**
@@ -645,19 +353,13 @@ const getSubscriptionPlans = async (req, res) => {
 const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
-
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        error: "Email is required",
-      });
+      return res.status(400).json({ success: false, error: "Email is required" });
     }
 
     const company = await StorageCompany.findOne({
-      email: email.toLowerCase(),
-      registrationStatus: "pending",
+      where: { email: email.toLowerCase(), registrationStatus: "pending" },
     });
-
     if (!company) {
       return res.status(404).json({
         success: false,
@@ -665,20 +367,14 @@ const resendVerification = async (req, res) => {
       });
     }
 
-    // Generate new verification token
     const verificationToken = crypto.randomBytes(32).toString("hex");
-    const verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-
     company.verificationToken = verificationToken;
-    company.verificationExpires = verificationExpires;
+    company.verificationExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await company.save();
-
-    // TODO: Send verification email
 
     res.json({
       success: true,
       message: "Verification email sent successfully",
-      // Include token for testing in development
       data: process.env.NODE_ENV === "development" ? { verificationToken } : {},
     });
   } catch (error) {

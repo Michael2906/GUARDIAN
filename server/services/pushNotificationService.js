@@ -31,8 +31,8 @@ webpush.setVapidDetails(
  */
 async function send2FAPushNotification(userId, notificationData) {
   try {
-    const user = await User.findById(userId);
-    if (!user || !user.twoFactorAuth.pushNotifications.enabled) {
+    const user = await User.findByPk(userId);
+    if (!user || !user.twoFactorAuth?.pushNotifications?.enabled) {
       return {
         success: false,
         error: "Push notifications not enabled for user",
@@ -166,7 +166,7 @@ async function sendSecurityAlert(userId, message) {
  */
 async function addPushSubscription(userId, subscription, userAgent) {
   try {
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
     if (!user) {
       return { success: false, error: "User not found" };
     }
@@ -228,7 +228,7 @@ async function addPushSubscription(userId, subscription, userAgent) {
  */
 async function removePushSubscription(userId, endpoint) {
   try {
-    const user = await User.findById(userId);
+    const user = await User.findByPk(userId);
     if (!user) {
       return { success: false, error: "User not found" };
     }

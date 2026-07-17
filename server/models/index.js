@@ -1,23 +1,65 @@
-// Central export point for all models
-const User = require("./User");
-const StorageCompany = require("./Company"); // Renamed but keeping Company reference for compatibility
-const ClientBusiness = require("./ClientBusiness");
-const InventoryItem = require("./InventoryItem");
-const Warehouse = require("./Warehouse");
+// Central model registry — Azure SQL / Sequelize edition.
+const { sequelize, Sequelize } = require("../config/database");
+
+const User = require("./User")(sequelize);
+const StorageCompany = require("./Company")(sequelize);
+const ClientBusiness = require("./ClientBusiness")(sequelize);
+const InventoryItem = require("./InventoryItem")(sequelize);
+const Warehouse = require("./Warehouse")(sequelize);
+
+/**
+ * Associations. `constraints: false` avoids physical FK creation (and the
+ * circular createdBy/storageCompanyId ordering problems that come with it);
+ * includes still work for read-side "populate" behaviour.
+ */
+User.belongsTo(StorageCompany, {
+  foreignKey: "storageCompanyId",
+  as: "storageCompany",
+  constraints: false,
+});
+User.belongsTo(ClientBusiness, {
+  foreignKey: "clientBusinessId",
+  as: "clientBusiness",
+  constraints: false,
+});
+StorageCompany.hasMany(User, {
+  foreignKey: "storageCompanyId",
+  as: "users",
+  constraints: false,
+});
+ClientBusiness.belongsTo(StorageCompany, {
+  foreignKey: "storageCompanyId",
+  as: "storageCompany",
+  constraints: false,
+});
+Warehouse.belongsTo(StorageCompany, {
+  foreignKey: "storageCompanyId",
+  as: "storageCompany",
+  constraints: false,
+});
+InventoryItem.belongsTo(StorageCompany, {
+  foreignKey: "storageCompanyId",
+  as: "storageCompany",
+  constraints: false,
+});
+
+/**
+ * Create/patch tables. Safe to run on every boot for exploration.
+ * Set SQL_SYNC_ALTER=true to let Sequelize ALTER existing tables to match.
+ */
+async function syncDatabase() {
+  const alter = process.env.SQL_SYNC_ALTER === "true";
+  await sequelize.sync({ alter });
+}
 
 module.exports = {
+  sequelize,
+  Sequelize,
+  syncDatabase,
   User,
-  Company: StorageCompany, // Legacy alias for backward compatibility
+  Company: StorageCompany, // legacy alias
   StorageCompany,
   ClientBusiness,
   InventoryItem,
   Warehouse,
 };
-
-// Export individual models as well for convenience
-module.exports.User = User;
-module.exports.Company = StorageCompany;
-module.exports.StorageCompany = StorageCompany;
-module.exports.ClientBusiness = ClientBusiness;
-module.exports.InventoryItem = InventoryItem;
-module.exports.Warehouse = Warehouse;

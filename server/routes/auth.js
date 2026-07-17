@@ -109,7 +109,7 @@ router.put("/profile", authenticateToken, async (req, res) => {
     }
 
     // Update user profile
-    const user = await User.findById(req.user.userId);
+    const user = await User.findByPk(req.user.userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -124,7 +124,6 @@ router.put("/profile", authenticateToken, async (req, res) => {
       user.preferences = { ...user.preferences, ...preferences };
     }
 
-    user.updatedAt = new Date();
     await user.save();
 
     res.json({
@@ -132,7 +131,7 @@ router.put("/profile", authenticateToken, async (req, res) => {
       message: "Profile updated successfully",
       data: {
         user: {
-          id: user._id,
+          id: user.id,
           email: user.email,
           firstName: user.firstName,
           lastName: user.lastName,
@@ -191,7 +190,7 @@ router.get("/sessions", authenticateToken, async (req, res) => {
   try {
     const { User } = require("../models");
 
-    const user = await User.findById(req.user.userId).select("refreshTokens");
+    const user = await User.findByPk(req.user.userId);
 
     if (!user) {
       return res.status(404).json({
@@ -201,16 +200,16 @@ router.get("/sessions", authenticateToken, async (req, res) => {
     }
 
     const activeSessions =
-      user.refreshTokens
-        ?.filter((tokenObj) => tokenObj.expiresAt > new Date())
+      (user.refreshTokens || [])
+        .filter((tokenObj) => new Date(tokenObj.expiresAt) > new Date())
         .map((tokenObj) => ({
-          id: tokenObj._id,
+          id: tokenObj.token,
           createdAt: tokenObj.createdAt,
           expiresAt: tokenObj.expiresAt,
           userAgent: tokenObj.userAgent,
           ipAddress: tokenObj.ipAddress,
-          isCurrentSession: false, // We'd need to match current refresh token to determine this
-        })) || [];
+          isCurrentSession: false,
+        }));
 
     res.json({
       success: true,
@@ -238,7 +237,7 @@ router.delete("/sessions/:sessionId", authenticateToken, async (req, res) => {
     const { sessionId } = req.params;
     const { User } = require("../models");
 
-    const user = await User.findById(req.user.userId);
+    const user = await User.findByPk(req.user.userId);
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -246,11 +245,10 @@ router.delete("/sessions/:sessionId", authenticateToken, async (req, res) => {
       });
     }
 
-    // Remove the specific refresh token
-    user.refreshTokens =
-      user.refreshTokens?.filter(
-        (tokenObj) => tokenObj._id.toString() !== sessionId
-      ) || [];
+    // Remove the specific refresh token (identified by its token value)
+    user.refreshTokens = (user.refreshTokens || []).filter(
+      (tokenObj) => tokenObj.token !== sessionId
+    );
 
     await user.save();
 
