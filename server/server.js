@@ -87,6 +87,7 @@ const userRoutes = require("./routes/users");
 const companyRoutes = require("./routes/companies");
 const warehouseRoutes = require("./routes/warehouses");
 const inventoryRoutes = require("./routes/inventory");
+const clientRoutes = require("./routes/clients");
 
 // Mount routes
 app.use("/api/registration", registrationRoutes);
@@ -98,6 +99,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/companies", companyRoutes);
 app.use("/api/warehouses", warehouseRoutes);
 app.use("/api/inventory", inventoryRoutes);
+app.use("/api/clients", clientRoutes);
 
 // Debug route
 app.get("/api/debug", (req, res) => {
