@@ -3,20 +3,11 @@ const router = express.Router();
 const { Op } = require("sequelize");
 const { User, StorageCompany, ClientBusiness } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
+const rbac = require("../lib/rbac");
 
 const USER_INCLUDES = [
   { model: StorageCompany, as: "storageCompany" },
   { model: ClientBusiness, as: "clientBusiness" },
-];
-
-const VALID_USER_TYPES = [
-  "guardian-admin",
-  "storage-admin",
-  "storage-manager",
-  "storage-employee",
-  "client-admin",
-  "client-user",
-  "client-viewer",
 ];
 
 /**
@@ -124,13 +115,6 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    if (userType !== "guardian-admin" && !storageCompanyId) {
-      return res.status(400).json({
-        success: false,
-        error: "Storage company is required for this user type",
-      });
-    }
-
     if (password.length < 8) {
       return res.status(400).json({
         success: false,
@@ -138,52 +122,89 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    if (!VALID_USER_TYPES.includes(userType)) {
+    // --- RBAC: may this actor create users at all, and assign this role? ---
+    if (!rbac.canWriteResource(currentUser.role, "user")) {
+      return res.status(403).json({
+        success: false,
+        error: "You do not have permission to create users",
+      });
+    }
+    if (!rbac.isValidRole(userType)) {
       return res.status(400).json({ success: false, error: "Invalid user type" });
     }
+    if (!rbac.canAssignRole(currentUser.role, userType)) {
+      return res.status(403).json({
+        success: false,
+        error: `You are not allowed to assign the role "${userType}"`,
+      });
+    }
 
-    if (currentUser.userType !== "guardian-admin") {
-      if (userType === "guardian-admin") {
-        return res.status(403).json({
+    // --- Resolve and validate the tenant context for the target role ---
+    const scope = rbac.SCOPE[userType];
+    let resolvedCompanyId = null;
+    let resolvedClientId = null;
+
+    if (scope === "company") {
+      // Guardian picks the company; scoped actors are locked to their own.
+      resolvedCompanyId = rbac.isGuardian(currentUser.role)
+        ? storageCompanyId
+        : currentUser.storageCompanyId;
+      if (!resolvedCompanyId) {
+        return res.status(400).json({
           success: false,
-          error: "Only GUARDIAN admins can create GUARDIAN admin users",
+          error: "A storage company is required for this role",
         });
       }
+      const company = await StorageCompany.findByPk(resolvedCompanyId);
+      if (!company) {
+        return res.status(400).json({ success: false, error: "Storage company not found" });
+      }
+    } else if (scope === "client") {
+      // Client roles require a client business; company is derived from it.
+      const clientId = rbac.isClientRole(currentUser.role)
+        ? currentUser.clientBusinessId
+        : clientBusinessId;
+      if (!clientId) {
+        return res.status(400).json({
+          success: false,
+          error: "A client business is required for client users",
+        });
+      }
+      const cb = await ClientBusiness.findByPk(clientId);
+      if (!cb) {
+        return res.status(400).json({ success: false, error: "Client business not found" });
+      }
+      // Scoped actors can only create within their own company / client business.
       if (
-        currentUser.userType === "storage-admin" &&
-        String(storageCompanyId) !== String(currentUser.storageCompanyId)
+        !rbac.isGuardian(currentUser.role) &&
+        String(cb.storageCompanyId) !== String(currentUser.storageCompanyId)
       ) {
         return res.status(403).json({
           success: false,
-          error: "Can only create users within your storage company",
+          error: "Can only create client users within your own company",
         });
       }
+      if (
+        rbac.isClientRole(currentUser.role) &&
+        String(cb.id) !== String(currentUser.clientBusinessId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Can only create users within your own client business",
+        });
+      }
+      resolvedClientId = cb.id;
+      resolvedCompanyId = cb.storageCompanyId;
     }
+    // scope === "platform" (guardian-admin): no company/client.
 
     const existingUser = await User.findOne({
-      where: { email: email.toLowerCase(), storageCompanyId: storageCompanyId || null },
+      where: { email: email.toLowerCase(), storageCompanyId: resolvedCompanyId || null },
     });
     if (existingUser) {
       return res.status(400).json({
         success: false,
         error: "User with this email already exists in this storage company",
-      });
-    }
-
-    if (storageCompanyId) {
-      const company = await StorageCompany.findByPk(storageCompanyId);
-      if (!company) {
-        return res.status(400).json({
-          success: false,
-          error: "Storage company not found",
-        });
-      }
-    }
-
-    if (["client-admin", "client-user", "client-viewer"].includes(userType) && !clientBusinessId) {
-      return res.status(400).json({
-        success: false,
-        error: "Client business ID is required for client users",
       });
     }
 
@@ -193,8 +214,8 @@ router.post("/", authenticateToken, async (req, res) => {
       firstName,
       lastName,
       userType,
-      storageCompanyId: storageCompanyId || null,
-      clientBusinessId: clientBusinessId || null,
+      storageCompanyId: resolvedCompanyId,
+      clientBusinessId: resolvedClientId,
       jobTitle: jobTitle || "",
       department: department || "",
       isEmailVerified: true,
@@ -284,14 +305,35 @@ router.put("/:userId", authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: "User not found" });
     }
 
-    if (
-      currentUser.userType === "storage-admin" &&
-      String(user.storageCompanyId) !== String(currentUser.storageCompanyId)
-    ) {
+    // --- RBAC: write permission + authority over the target user ---
+    if (!rbac.canWriteResource(currentUser.role, "user")) {
       return res.status(403).json({
         success: false,
-        error: "Cannot modify users from other storage companies",
+        error: "You do not have permission to modify users",
       });
+    }
+    if (!rbac.isGuardian(currentUser.role)) {
+      if (!rbac.canManageRole(currentUser.role, user.userType)) {
+        return res.status(403).json({ success: false, error: "You cannot manage this user" });
+      }
+      if (
+        rbac.isStorageRole(currentUser.role) &&
+        String(user.storageCompanyId) !== String(currentUser.storageCompanyId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot modify users from other storage companies",
+        });
+      }
+      if (
+        rbac.isClientRole(currentUser.role) &&
+        String(user.clientBusinessId) !== String(currentUser.clientBusinessId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot modify users from other client businesses",
+        });
+      }
     }
 
     // Never allow these through a profile update.
@@ -300,6 +342,38 @@ router.put("/:userId", authenticateToken, async (req, res) => {
     delete updates._id;
     delete updates.refreshTokens;
     delete updates.twoFactorAuth;
+    delete updates.storageCompanyId;
+    delete updates.clientBusinessId;
+
+    const isSelf = String(userId) === String(currentUser.userId);
+
+    // Role changes require assign authority, can't target yourself, and can't
+    // move a user across scopes (recreate instead).
+    if (updates.userType !== undefined && updates.userType !== user.userType) {
+      if (isSelf) {
+        return res.status(403).json({ success: false, error: "You cannot change your own role" });
+      }
+      if (!rbac.canAssignRole(currentUser.role, updates.userType)) {
+        return res.status(403).json({
+          success: false,
+          error: `You are not allowed to assign the role "${updates.userType}"`,
+        });
+      }
+      if (rbac.SCOPE[updates.userType] !== rbac.SCOPE[user.userType]) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot change a user's role across scopes; recreate the user instead",
+        });
+      }
+    }
+
+    // Prevent deactivating your own account.
+    if (isSelf && updates.isActive === false) {
+      return res.status(400).json({
+        success: false,
+        error: "You cannot deactivate your own account",
+      });
+    }
 
     const allowedUpdates = [
       "firstName",
@@ -344,21 +418,40 @@ router.delete("/:userId", authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, error: "User not found" });
     }
 
-    if (
-      currentUser.userType === "storage-admin" &&
-      String(user.storageCompanyId) !== String(currentUser.storageCompanyId)
-    ) {
+    if (!rbac.canWriteResource(currentUser.role, "user")) {
       return res.status(403).json({
         success: false,
-        error: "Cannot delete users from other storage companies",
+        error: "You do not have permission to delete users",
       });
     }
-
     if (String(userId) === String(currentUser.userId)) {
       return res.status(400).json({
         success: false,
         error: "Cannot delete your own account",
       });
+    }
+    if (!rbac.isGuardian(currentUser.role)) {
+      if (!rbac.canManageRole(currentUser.role, user.userType)) {
+        return res.status(403).json({ success: false, error: "You cannot manage this user" });
+      }
+      if (
+        rbac.isStorageRole(currentUser.role) &&
+        String(user.storageCompanyId) !== String(currentUser.storageCompanyId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot delete users from other storage companies",
+        });
+      }
+      if (
+        rbac.isClientRole(currentUser.role) &&
+        String(user.clientBusinessId) !== String(currentUser.clientBusinessId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Cannot delete users from other client businesses",
+        });
+      }
     }
 
     user.isActive = false;

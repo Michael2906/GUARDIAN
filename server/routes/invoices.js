@@ -8,11 +8,10 @@ const {
   StockMovement,
 } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
+const rbac = require("../lib/rbac");
 
-const WRITE_ROLES = ["guardian-admin", "storage-admin", "storage-manager"];
-const canWrite = (req) => WRITE_ROLES.includes(req.user.role);
-const isClientUser = (req) =>
-  ["client-admin", "client-user", "client-viewer"].includes(req.user.role);
+const canWrite = (req) => rbac.canWriteResource(req.user.role, "invoice");
+const isClientUser = (req) => rbac.isClientRole(req.user.role);
 
 const scopeWhere = (req) => {
   if (req.user.role === "guardian-admin") return {};

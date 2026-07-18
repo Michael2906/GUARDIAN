@@ -3,10 +3,10 @@ const router = express.Router();
 const { Op } = require("sequelize");
 const { ClientBusiness, InventoryItem, StorageCompany } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
+const rbac = require("../lib/rbac");
 
-// Roles that can create/edit/delete client businesses.
-const WRITE_ROLES = ["guardian-admin", "storage-admin", "storage-manager"];
-const canWrite = (req) => WRITE_ROLES.includes(req.user.role);
+// Roles that can create/edit/delete client businesses (central authority).
+const canWrite = (req) => rbac.canWriteResource(req.user.role, "client");
 
 // Tenant scope. Guardian sees all; storage users their company; client users
 // only their own client business.

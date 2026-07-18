@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const { Op } = require("sequelize");
 const { User, StorageCompany, ClientBusiness } = require("../models");
+const rbac = require("../lib/rbac");
 
 // Standard includes to emulate Mongo's populate of company/client business.
 const AUTH_INCLUDES = [
@@ -28,6 +29,7 @@ const generateTokenPair = (user) => {
     email: user.email,
     role: user.userType,
     storageCompanyId: user.storageCompanyId || null,
+    clientBusinessId: user.clientBusinessId || null,
     permissions: user.permissions || {},
     isEmailVerified: user.isEmailVerified,
   };
@@ -568,19 +570,6 @@ const updateUserRole = async (req, res) => {
       });
     }
 
-    const validUserTypes = [
-      "storage-admin",
-      "storage-manager",
-      "storage-employee",
-      "client-admin",
-      "client-user",
-      "client-viewer",
-    ];
-
-    if (!validUserTypes.includes(userType)) {
-      return res.status(400).json({ success: false, error: "Invalid user type" });
-    }
-
     const adminUser = await User.findByPk(adminUserId);
     if (!adminUser) {
       return res.status(404).json({
@@ -589,10 +578,19 @@ const updateUserRole = async (req, res) => {
       });
     }
 
-    if (!adminUser.hasPermission("administration", "manageUsers")) {
+    if (!rbac.canWriteResource(adminUser.userType, "user")) {
       return res.status(403).json({
         success: false,
         error: "Insufficient permissions to manage users",
+      });
+    }
+    if (!rbac.isValidRole(userType)) {
+      return res.status(400).json({ success: false, error: "Invalid user type" });
+    }
+    if (!rbac.canAssignRole(adminUser.userType, userType)) {
+      return res.status(403).json({
+        success: false,
+        error: `You are not allowed to assign the role "${userType}"`,
       });
     }
 
@@ -600,25 +598,40 @@ const updateUserRole = async (req, res) => {
     if (!user) {
       return res.status(404).json({ success: false, error: "User not found" });
     }
-
-    if (
-      adminUser.userType === "storage-admin" &&
-      String(user.storageCompanyId) !== String(adminUser.storageCompanyId)
-    ) {
+    if (String(user.id) === String(adminUserId)) {
       return res.status(403).json({
         success: false,
-        error: "Can only manage users within your storage company",
+        error: "You cannot change your own role",
       });
     }
 
-    if (
-      adminUser.userType === "client-admin" &&
-      user.clientBusinessId &&
-      String(user.clientBusinessId) !== String(adminUser.clientBusinessId)
-    ) {
-      return res.status(403).json({
+    if (!rbac.isGuardian(adminUser.userType)) {
+      if (!rbac.canManageRole(adminUser.userType, user.userType)) {
+        return res.status(403).json({ success: false, error: "You cannot manage this user" });
+      }
+      if (
+        rbac.isStorageRole(adminUser.userType) &&
+        String(user.storageCompanyId) !== String(adminUser.storageCompanyId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Can only manage users within your storage company",
+        });
+      }
+      if (
+        rbac.isClientRole(adminUser.userType) &&
+        String(user.clientBusinessId) !== String(adminUser.clientBusinessId)
+      ) {
+        return res.status(403).json({
+          success: false,
+          error: "Can only manage users within your client business",
+        });
+      }
+    }
+    if (rbac.SCOPE[userType] !== rbac.SCOPE[user.userType]) {
+      return res.status(400).json({
         success: false,
-        error: "Can only manage users within your client business",
+        error: "Cannot change a user's role across scopes; recreate the user instead",
       });
     }
 

@@ -69,6 +69,7 @@ const authenticateToken = async (req, res, next) => {
       role: decoded.role,
       userType: decoded.role, // Add userType for backward compatibility
       storageCompanyId: decoded.storageCompanyId,
+      clientBusinessId: decoded.clientBusinessId || null,
       permissions: decoded.permissions || [],
       isEmailVerified: decoded.isEmailVerified,
       userData: user, // Full user object for additional checks

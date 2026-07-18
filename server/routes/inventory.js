@@ -10,16 +10,16 @@ const {
   StorageCompany,
 } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
+const rbac = require("../lib/rbac");
 
 const ITEM_INCLUDES = [
   { model: Warehouse, as: "warehouse" },
   { model: ClientBusiness, as: "clientBusiness" },
 ];
 
-// client-viewer is read-only; everyone else authenticated may write within scope.
-const canWrite = (req) => req.user.role !== "client-viewer";
-const isClientUser = (req) =>
-  ["client-admin", "client-user", "client-viewer"].includes(req.user.role);
+// Central authority governs who may write inventory (client-viewer is read-only).
+const canWrite = (req) => rbac.canWriteResource(req.user.role, "inventory");
+const isClientUser = (req) => rbac.isClientRole(req.user.role);
 
 // Tenant scope for reads/writes.
 const scopeWhere = (req) => {

@@ -3,10 +3,10 @@ const router = express.Router();
 const { Op } = require("sequelize");
 const { Warehouse, InventoryItem, StorageCompany } = require("../models");
 const { authenticateToken } = require("../middleware/auth");
+const rbac = require("../lib/rbac");
 
-// Roles allowed to create/update/delete warehouses.
-const WRITE_ROLES = ["guardian-admin", "storage-admin", "storage-manager"];
-const canWrite = (req) => WRITE_ROLES.includes(req.user.role);
+// Roles allowed to create/update/delete warehouses (central authority).
+const canWrite = (req) => rbac.canWriteResource(req.user.role, "warehouse");
 
 // Build the tenant scope for the current user.
 // isActive is the soft-delete flag; deleted warehouses never appear in lists/stats.
