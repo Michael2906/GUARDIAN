@@ -235,6 +235,151 @@ router.post("/", authenticateToken, async (req, res) => {
 });
 
 /**
+ * POST /api/inventory/import — bulk import mapped rows from a CSV/XLSX.
+ * body: { items: [{name, sku, quantity, unit, reorderPoint, unitCost, category,
+ *         location, description, warehouse?, client?}], defaultWarehouseId?,
+ *         defaultClientBusinessId?, storageCompanyId? }
+ * Each row is validated + inserted in its own transaction; partial success is
+ * reported per-row so a few bad rows don't block the good ones.
+ */
+const MAX_IMPORT_ROWS = 5000;
+router.post("/import", authenticateToken, async (req, res) => {
+  try {
+    if (!canWrite(req)) {
+      return res.status(403).json({ success: false, error: "Read-only access" });
+    }
+    const { items, defaultWarehouseId, defaultClientBusinessId, storageCompanyId } = req.body;
+    if (!Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ success: false, error: "No rows to import" });
+    }
+    if (items.length > MAX_IMPORT_ROWS) {
+      return res.status(400).json({
+        success: false,
+        error: `Too many rows (${items.length}); import at most ${MAX_IMPORT_ROWS} at a time`,
+      });
+    }
+
+    // Resolve owning company under tenant rules.
+    let companyId = rbac.isGuardian(req.user.role) ? storageCompanyId : req.user.storageCompanyId;
+    if (!companyId) {
+      return res.status(400).json({ success: false, error: "A storage company is required" });
+    }
+    const company = await StorageCompany.findByPk(companyId);
+    if (!company) {
+      return res.status(400).json({ success: false, error: "Storage company not found" });
+    }
+
+    // Client users can only import into their own client business.
+    const forcedClientId = isClientUser(req) ? req.user.clientBusinessId : null;
+
+    // Build name/code lookup maps for warehouses + clients in this company.
+    const [whs, cbs] = await Promise.all([
+      Warehouse.findAll({ where: { storageCompanyId: companyId, isActive: true } }),
+      ClientBusiness.findAll({ where: { storageCompanyId: companyId, isActive: true } }),
+    ]);
+    const key = (s) => (s == null ? "" : String(s).toLowerCase().trim());
+    const whMap = {};
+    whs.forEach((w) => { whMap[key(w.name)] = w.id; if (w.code) whMap[key(w.code)] = w.id; });
+    const cbMap = {};
+    cbs.forEach((c) => { cbMap[key(c.name)] = c.id; if (c.clientCode) cbMap[key(c.clientCode)] = c.id; });
+
+    // Validate the defaults belong to this company.
+    if (defaultWarehouseId && !whs.some((w) => String(w.id) === String(defaultWarehouseId))) {
+      return res.status(400).json({ success: false, error: "Default warehouse not found for this company" });
+    }
+    if (defaultClientBusinessId && !cbs.some((c) => String(c.id) === String(defaultClientBusinessId))) {
+      return res.status(400).json({ success: false, error: "Default client not found for this company" });
+    }
+
+    const toInt = (v, d = 0) => {
+      const n = parseInt(v, 10);
+      return Number.isNaN(n) ? d : n;
+    };
+
+    const failed = [];
+    let created = 0;
+
+    for (let i = 0; i < items.length; i++) {
+      const row = items[i] || {};
+      const rowNum = row.__row || i + 1;
+      try {
+        const name = (row.name || "").toString().trim();
+        if (!name) throw new Error("Missing item name");
+
+        // Resolve warehouse: per-row name/code overrides the default.
+        let warehouseId = defaultWarehouseId || null;
+        if (row.warehouse) {
+          const wid = whMap[key(row.warehouse)];
+          if (!wid) throw new Error(`Unknown warehouse "${row.warehouse}"`);
+          warehouseId = wid;
+        }
+        // Resolve client (unless forced for client users).
+        let clientId = forcedClientId || defaultClientBusinessId || null;
+        if (!forcedClientId && row.client) {
+          const cid = cbMap[key(row.client)];
+          if (!cid) throw new Error(`Unknown client "${row.client}"`);
+          clientId = cid;
+        }
+
+        const quantity = Math.max(0, toInt(row.quantity, 0));
+        const reorderPoint = Math.max(0, toInt(row.reorderPoint, 0));
+        const unitCostRaw = row.unitCost != null && row.unitCost !== "" ? parseFloat(row.unitCost) : null;
+        const unitCost = unitCostRaw != null && !Number.isNaN(unitCostRaw) ? unitCostRaw : null;
+
+        await sequelize.transaction(async (t) => {
+          const item = await InventoryItem.create(
+            {
+              storageCompanyId: companyId,
+              clientBusinessId: clientId,
+              warehouseId,
+              name,
+              sku: row.sku ? String(row.sku).trim() : null,
+              description: row.description ? String(row.description).trim() : null,
+              category: row.category ? String(row.category).trim() : null,
+              quantity,
+              unit: row.unit ? String(row.unit).trim() : "each",
+              reorderPoint,
+              unitCost,
+              location: row.location ? String(row.location).trim() : null,
+              status: "active",
+              createdBy: req.user.userId,
+              lastModifiedBy: req.user.userId,
+            },
+            { transaction: t }
+          );
+          if (quantity > 0) {
+            await StockMovement.create(
+              {
+                inventoryItemId: item.id,
+                storageCompanyId: companyId,
+                type: "receive",
+                quantityChange: quantity,
+                quantityAfter: quantity,
+                reason: "Imported opening balance",
+                performedBy: req.user.userId,
+              },
+              { transaction: t }
+            );
+          }
+        });
+        created += 1;
+      } catch (rowErr) {
+        failed.push({ row: rowNum, name: row.name || "", error: rowErr.message });
+      }
+    }
+
+    res.status(created > 0 ? 201 : 400).json({
+      success: created > 0,
+      message: `Imported ${created} of ${items.length} item(s)`,
+      data: { created, failedCount: failed.length, total: items.length, failed: failed.slice(0, 100) },
+    });
+  } catch (error) {
+    console.error("Inventory import error:", error);
+    res.status(500).json({ success: false, error: "Import failed" });
+  }
+});
+
+/**
  * GET /api/inventory/:id — with recent movement history
  */
 router.get("/:id", authenticateToken, async (req, res) => {
