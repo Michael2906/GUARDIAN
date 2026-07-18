@@ -406,6 +406,18 @@
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div id="storage-company-field">
+                <label class="block text-sm font-medium text-gray-700 mb-2"
+                  >Storage Company *</label
+                >
+                <select
+                  id="storage-company"
+                  onchange="updateRoleOptions()"
+                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                >
+                  <option value="">Select Storage Company</option>
+                </select>
+              </div>
               <div>
                 <label class="block text-sm font-medium text-gray-700 mb-2"
                   >User Type *</label
@@ -413,28 +425,9 @@
                 <select
                   id="user-type"
                   required
-                  onchange="handleUserTypeChange()"
                   class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                 >
-                  <option value="">Select User Type</option>
-                  <option value="guardian-admin">GUARDIAN Admin</option>
-                  <option value="storage-admin">Storage Admin</option>
-                  <option value="storage-manager">Storage Manager</option>
-                  <option value="storage-employee">Storage Employee</option>
-                  <option value="client-admin">Client Admin</option>
-                  <option value="client-user">Client User</option>
-                  <option value="client-viewer">Client Viewer</option>
-                </select>
-              </div>
-              <div id="storage-company-field">
-                <label class="block text-sm font-medium text-gray-700 mb-2"
-                  >Storage Company *</label
-                >
-                <select
-                  id="storage-company"
-                  class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                >
-                  <option value="">Select Storage Company</option>
+                  <option value="">Select a company first</option>
                 </select>
               </div>
             </div>
@@ -619,8 +612,10 @@
             // Populate form dropdown
             const formSelect = document.getElementById("storage-company");
             if (formSelect) {
+              // Platform option lets a GUARDIAN admin create another guardian-admin.
               formSelect.innerHTML =
-                '<option value="">Select Storage Company</option>';
+                '<option value="">Select Storage Company</option>' +
+                '<option value="__platform__">GUARDIAN Platform (no company)</option>';
             }
 
             companies.forEach((company) => {
@@ -990,7 +985,8 @@
         document.getElementById("user-id").value = "";
         document.getElementById("password-field").classList.remove("hidden");
         document.getElementById("password").required = true;
-        handleUserTypeChange();
+        document.getElementById("storage-company").value = "";
+        setupUserForm();
         document.getElementById("user-modal").classList.remove("hidden");
       }
 
@@ -1000,22 +996,58 @@
         document.getElementById("user-form").reset();
       }
 
-      // Handle user type change
-      function handleUserTypeChange() {
-        const userType = document.getElementById("user-type").value;
-        const storageCompanyField = document.getElementById(
-          "storage-company-field"
-        );
-        const storageCompanySelect = document.getElementById("storage-company");
+      const ROLE_LABELS = {
+        "guardian-admin": "GUARDIAN Admin",
+        "storage-admin": "Storage Admin",
+        "storage-manager": "Storage Manager",
+        "storage-employee": "Storage Employee",
+        "client-admin": "Client Admin",
+        "client-user": "Client User",
+        "client-viewer": "Client Viewer",
+      };
 
-        if (userType === "guardian-admin") {
-          storageCompanyField.style.display = "none";
-          storageCompanySelect.required = false;
-          storageCompanySelect.value = "";
-        } else {
-          storageCompanyField.style.display = "block";
-          storageCompanySelect.required = true;
+      // Roles the current actor may assign, given the selected company context.
+      // Guardian admins can make platform admins or any storage role; a storage
+      // admin can create storage roles only; a manager only employees.
+      function allowedRolesFor(companyValue) {
+        const actor = currentUser.role;
+        if (actor === "guardian-admin") {
+          if (companyValue === "__platform__") return ["guardian-admin"];
+          if (companyValue) return ["storage-admin", "storage-manager", "storage-employee"];
+          return [];
         }
+        if (actor === "storage-admin")
+          return ["storage-admin", "storage-manager", "storage-employee"];
+        if (actor === "storage-manager") return ["storage-employee"];
+        return [];
+      }
+
+      // Rebuild the User Type options based on the selected company + actor role.
+      function updateRoleOptions() {
+        const companySel = document.getElementById("storage-company");
+        const roleSel = document.getElementById("user-type");
+        const companyValue = companySel ? companySel.value : "";
+        const roles = allowedRolesFor(companyValue);
+        const prev = roleSel.value;
+        if (!roles.length) {
+          roleSel.innerHTML = `<option value="">${
+            currentUser.role === "guardian-admin" ? "Select a company first" : "Select user type"
+          }</option>`;
+        } else {
+          roleSel.innerHTML =
+            '<option value="">Select user type</option>' +
+            roles.map((r) => `<option value="${r}">${ROLE_LABELS[r]}</option>`).join("");
+        }
+        if (roles.includes(prev)) roleSel.value = prev;
+      }
+
+      // Prepare the form for the current actor: company field only for guardians
+      // (storage admins create within their own company implicitly).
+      function setupUserForm() {
+        const companyField = document.getElementById("storage-company-field");
+        companyField.style.display =
+          currentUser.role === "guardian-admin" ? "block" : "none";
+        updateRoleOptions();
       }
 
       // Create/Update user
@@ -1038,8 +1070,12 @@
           }
 
           if (formData.userType !== "guardian-admin") {
+            // Guardian picks the company; storage admins use their own implicitly.
             formData.storageCompanyId =
-              document.getElementById("storage-company").value;
+              currentUser.role === "guardian-admin"
+                ? document.getElementById("storage-company").value
+                : (currentUser.storageCompany && currentUser.storageCompany.id) ||
+                  currentUser.storageCompanyId;
           }
 
           try {
@@ -1098,16 +1134,18 @@
             document.getElementById("first-name").value = user.firstName;
             document.getElementById("last-name").value = user.lastName;
             document.getElementById("email").value = user.email;
-            document.getElementById("user-type").value = user.userType;
             document.getElementById("job-title").value = user.jobTitle || "";
             document.getElementById("department").value = user.department || "";
 
-            if (user.storageCompanyId) {
-              document.getElementById("storage-company").value =
-                user.storageCompanyId._id;
+            // Set the company context first so the role list is built correctly.
+            const companySel = document.getElementById("storage-company");
+            if (user.userType === "guardian-admin") {
+              companySel.value = "__platform__";
+            } else if (user.storageCompanyId) {
+              companySel.value = user.storageCompanyId._id || user.storageCompanyId;
             }
-
-            handleUserTypeChange();
+            setupUserForm();
+            document.getElementById("user-type").value = user.userType;
             document.getElementById("user-modal").classList.remove("hidden");
           } else {
             showMessage(data.error);

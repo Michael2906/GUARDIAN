@@ -298,10 +298,8 @@
         currentUser = data.data.user;
         document.getElementById("user-name").textContent = `${currentUser.firstName} ${currentUser.lastName}`;
         if (isGuardian()) {
-          // Guardian is oversight only: read-only across all tenants.
+          // Guardian admins have full global control across all tenants.
           document.getElementById("company-wrap").classList.remove("hidden");
-          document.getElementById("oversight-banner").classList.remove("hidden");
-          document.getElementById("add-btn").classList.add("hidden");
           await loadCompanies();
         }
         await loadWarehouses();
@@ -428,10 +426,11 @@
               <td class="px-4 py-3 font-medium">${it.quantity} <span class="text-xs text-gray-400">${it.unit}</span></td>
               <td class="px-4 py-3">${it.reorderPoint || "—"}</td>
               <td class="px-4 py-3">${badge}</td>
-              <td class="px-4 py-3 text-right space-x-2">${isGuardian() ? '<span class="text-gray-300">—</span>' : `
+              <td class="px-4 py-3 text-right space-x-2">
                 <button onclick='openAdjust(${JSON.stringify({ _id: it._id, name: it.name, quantity: it.quantity }).replace(/'/g, "&#39;")})' class="text-green-600 hover:text-green-800" title="Adjust stock"><i class="fas fa-right-left"></i></button>
                 <button onclick='openEditModal(${JSON.stringify(it).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800" title="Edit"><i class="fas fa-pen"></i></button>
-                <button onclick="removeItem('${it._id}','${(it.name || "").replace(/'/g, "&#39;")}')" class="text-red-600 hover:text-red-800" title="Delete"><i class="fas fa-trash"></i></button>`}</td>
+                <button onclick="removeItem('${it._id}','${(it.name || "").replace(/'/g, "&#39;")}')" class="text-red-600 hover:text-red-800" title="Delete"><i class="fas fa-trash"></i></button>
+              </td>
             </tr>`;
           }).join("");
         }

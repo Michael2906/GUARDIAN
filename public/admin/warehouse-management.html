@@ -254,10 +254,9 @@
         document.getElementById("user-name").textContent =
           `${currentUser.firstName} ${currentUser.lastName}`;
         if (currentUser.role === "guardian-admin") {
-          // Guardian is oversight only: read-only across all tenants.
+          // Guardian admins have full global control; company picker lets them
+          // choose which tenant a warehouse belongs to.
           document.getElementById("company-wrap").classList.remove("hidden");
-          document.getElementById("oversight-banner").classList.remove("hidden");
-          document.getElementById("add-btn").classList.add("hidden");
           await loadCompanies();
         }
         loadStatistics();
@@ -328,9 +327,8 @@
           empty.classList.remove("hidden");
         } else {
           empty.classList.add("hidden");
-          const readOnly = currentUser.role === "guardian-admin";
           tbody.innerHTML = list.map((w) => {
-            const actions = readOnly ? '<span class="text-gray-300">—</span>' : `
+            const actions = `
                 <button onclick='openEditModal(${JSON.stringify(w).replace(/'/g, "&#39;")})' class="text-blue-600 hover:text-blue-800"><i class="fas fa-pen"></i></button>
                 <button onclick="removeWarehouse('${w._id}','${w.name.replace(/'/g, "&#39;")}')" class="text-red-600 hover:text-red-800"><i class="fas fa-trash"></i></button>`;
             return `

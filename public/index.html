@@ -45,6 +45,7 @@
                   id="email"
                   name="email"
                   required
+                  autocomplete="username"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="Enter your email"
                 />
@@ -68,6 +69,7 @@
                   id="password"
                   name="password"
                   required
+                  autocomplete="current-password"
                   class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                   placeholder="Enter your password"
                 />
@@ -215,6 +217,13 @@
           const data = await response.json();
 
           if (data.success) {
+            // Remember-me: persist the email for prefill next time (never the password).
+            if (remember) {
+              localStorage.setItem("guardian_remember_email", email);
+            } else {
+              localStorage.removeItem("guardian_remember_email");
+            }
+
             // Check if 2FA verification is required
             if (data.requiresTwoFactor) {
               // Store temporary session data for 2FA
@@ -307,6 +316,14 @@
 
       // Check if user is already logged in
       document.addEventListener("DOMContentLoaded", () => {
+        // Prefill remembered email (password is left to the browser's password manager).
+        const rememberedEmail = localStorage.getItem("guardian_remember_email");
+        if (rememberedEmail) {
+          document.getElementById("email").value = rememberedEmail;
+          document.getElementById("remember").checked = true;
+          document.getElementById("password").focus();
+        }
+
         const accessToken = localStorage.getItem("guardian_access_token");
         const refreshToken =
           localStorage.getItem("guardian_refresh_token") ||

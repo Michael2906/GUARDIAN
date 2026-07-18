@@ -161,10 +161,7 @@
         if (!ok || !data.success) return (window.location.href = "/");
         currentUser = data.data.user;
         document.getElementById("user-name").textContent = `${currentUser.firstName} ${currentUser.lastName}`;
-        if (isGuardian()) {
-          document.getElementById("oversight-banner").classList.remove("hidden");
-          document.getElementById("gen-btn").classList.add("hidden");
-        }
+        // Guardian admins have full global control across all tenants.
         await loadClients();
         loadStatistics();
         loadInvoices();
@@ -210,11 +207,9 @@
             const clName = inv.clientBusinessId && inv.clientBusinessId.name ? inv.clientBusinessId.name : "—";
             const period = inv.periodStart ? `${inv.periodStart} → ${inv.periodEnd}` : "—";
             let actions = `<button onclick='viewInvoice(${JSON.stringify(inv).replace(/'/g,"&#39;")})' class="text-gray-600 hover:text-gray-900" title="View"><i class="fas fa-eye"></i></button>`;
-            if (!isGuardian()) {
-              if (inv.status === "draft") actions += ` <button onclick="setStatus('${inv._id}','sent')" class="text-blue-600 hover:text-blue-800" title="Mark sent"><i class="fas fa-paper-plane"></i></button>`;
-              if (inv.status === "draft" || inv.status === "sent") actions += ` <button onclick="setStatus('${inv._id}','paid')" class="text-green-600 hover:text-green-800" title="Mark paid"><i class="fas fa-check"></i></button>`;
-              if (inv.status !== "void") actions += ` <button onclick="removeInvoice('${inv._id}','${inv.invoiceNumber}')" class="text-red-600 hover:text-red-800" title="Delete/Void"><i class="fas fa-trash"></i></button>`;
-            }
+            if (inv.status === "draft") actions += ` <button onclick="setStatus('${inv._id}','sent')" class="text-blue-600 hover:text-blue-800" title="Mark sent"><i class="fas fa-paper-plane"></i></button>`;
+            if (inv.status === "draft" || inv.status === "sent") actions += ` <button onclick="setStatus('${inv._id}','paid')" class="text-green-600 hover:text-green-800" title="Mark paid"><i class="fas fa-check"></i></button>`;
+            if (inv.status !== "void") actions += ` <button onclick="removeInvoice('${inv._id}','${inv.invoiceNumber}')" class="text-red-600 hover:text-red-800" title="Delete/Void"><i class="fas fa-trash"></i></button>`;
             return `<tr class="border-t hover:bg-gray-50">
               <td class="px-4 py-3 font-medium">${inv.invoiceNumber}</td>
               <td class="px-4 py-3">${clName}</td>
