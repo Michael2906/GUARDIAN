@@ -14,6 +14,7 @@ module.exports = (sequelize) => {
       warehouseId: { type: DataTypes.UUID, allowNull: true },
 
       sku: { type: DataTypes.STRING(80), allowNull: true },
+      barcode: { type: DataTypes.STRING(120), allowNull: true }, // UPC/EAN/Code128 etc.
       name: { type: DataTypes.STRING(200), allowNull: false },
       description: { type: DataTypes.STRING(1000), allowNull: true },
       category: { type: DataTypes.STRING(80), allowNull: true },
@@ -45,6 +46,7 @@ module.exports = (sequelize) => {
         { fields: ["storageCompanyId", "warehouseId"] },
         { fields: ["storageCompanyId", "clientBusinessId"] },
         { fields: ["sku"] },
+        { fields: ["barcode"] },
       ],
     }
   );

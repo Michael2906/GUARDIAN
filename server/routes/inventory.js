@@ -152,6 +152,7 @@ router.post("/", authenticateToken, async (req, res) => {
     const {
       name,
       sku,
+      barcode,
       description,
       category,
       quantity = 0,
@@ -197,6 +198,7 @@ router.post("/", authenticateToken, async (req, res) => {
       warehouseId: warehouseId || null,
       name: name.trim(),
       sku: sku ? sku.trim() : null,
+      barcode: barcode ? String(barcode).trim() : null,
       description: description || null,
       category: category || null,
       quantity: parseInt(quantity, 10) || 0,
@@ -334,6 +336,7 @@ router.post("/import", authenticateToken, async (req, res) => {
               warehouseId,
               name,
               sku: row.sku ? String(row.sku).trim() : null,
+              barcode: row.barcode ? String(row.barcode).trim() : null,
               description: row.description ? String(row.description).trim() : null,
               category: row.category ? String(row.category).trim() : null,
               quantity,
@@ -376,6 +379,32 @@ router.post("/import", authenticateToken, async (req, res) => {
   } catch (error) {
     console.error("Inventory import error:", error);
     res.status(500).json({ success: false, error: "Import failed" });
+  }
+});
+
+/**
+ * GET /api/inventory/lookup?code=XXX — scan-to-find by barcode or SKU (scoped).
+ * Defined before /:id so "lookup" isn't captured as an id.
+ */
+router.get("/lookup", authenticateToken, async (req, res) => {
+  try {
+    const code = (req.query.code || "").toString().trim();
+    if (!code) {
+      return res.status(400).json({ success: false, error: "A barcode or SKU is required" });
+    }
+    const item = await InventoryItem.findOne({
+      where: {
+        [Op.and]: [scopeWhere(req), { [Op.or]: [{ barcode: code }, { sku: code }] }],
+      },
+      include: ITEM_INCLUDES,
+    });
+    if (!item) {
+      return res.status(404).json({ success: false, error: `No item found for "${code}"` });
+    }
+    res.json({ success: true, data: { item } });
+  } catch (error) {
+    console.error("Inventory lookup error:", error);
+    res.status(500).json({ success: false, error: "Lookup failed" });
   }
 });
 
@@ -454,6 +483,7 @@ router.put("/:id", authenticateToken, async (req, res) => {
     const fields = [
       "name",
       "sku",
+      "barcode",
       "description",
       "category",
       "unit",

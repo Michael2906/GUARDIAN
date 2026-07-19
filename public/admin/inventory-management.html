@@ -9,6 +9,7 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
     />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
   </head>
   <body class="bg-gray-50">
     <!-- Header -->
@@ -46,6 +47,9 @@
           <p class="text-gray-600">Track stock levels, receiving and shipping</p>
         </div>
         <div class="flex items-center gap-2">
+          <button onclick="openScan()" class="border border-green-600 text-green-600 px-4 py-2 rounded-lg hover:bg-green-50">
+            <i class="fas fa-barcode mr-2"></i>Scan
+          </button>
           <a href="/admin/inventory-import.html" class="border border-purple-600 text-purple-600 px-4 py-2 rounded-lg hover:bg-purple-50">
             <i class="fas fa-file-import mr-2"></i>Import
           </a>
@@ -145,14 +149,21 @@
             <label class="block text-sm font-medium text-gray-700 mb-1">Storage Company *</label>
             <select id="i-company" class="w-full border border-gray-300 rounded-lg px-3 py-2" onchange="filterWarehouseOptions();filterClientOptions()"></select>
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+            <input id="i-name" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+          </div>
           <div class="grid grid-cols-2 gap-4">
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input id="i-name" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
-            </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">SKU</label>
               <input id="i-sku" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
+              <div class="flex gap-1">
+                <input id="i-barcode" class="w-full border border-gray-300 rounded-lg px-3 py-2" />
+                <button type="button" onclick="scanIntoField('i-barcode')" title="Scan with camera" class="px-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"><i class="fas fa-camera"></i></button>
+              </div>
             </div>
           </div>
           <div class="grid grid-cols-2 gap-4">
@@ -251,6 +262,28 @@
         <div class="px-6 py-4 border-t flex justify-end space-x-3">
           <button onclick="closeAdjust()" class="px-4 py-2 border rounded-lg">Cancel</button>
           <button onclick="submitAdjust()" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scan Modal -->
+    <div id="scan-modal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
+      <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="px-6 py-4 border-b flex items-center justify-between">
+          <h3 class="text-lg font-semibold"><i class="fas fa-barcode mr-2 text-green-600"></i>Scan Item</h3>
+          <button onclick="closeScan()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="p-6 space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Barcode / SKU</label>
+            <input id="scan-input" placeholder="Scan with a handheld scanner, or type + Enter"
+              class="w-full border border-gray-300 rounded-lg px-3 py-2" onkeydown="if(event.key==='Enter'){event.preventDefault();scanLookup(this.value);}" />
+            <p class="text-xs text-gray-500 mt-1">Handheld scanners type here automatically. Or use the camera:</p>
+          </div>
+          <button onclick="scanCameraForLookup()" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-gray-700 hover:bg-gray-50">
+            <i class="fas fa-camera mr-2"></i>Use camera
+          </button>
+          <div id="scan-result"></div>
         </div>
       </div>
     </div>
@@ -424,7 +457,7 @@
             <tr class="border-t hover:bg-gray-50">
               <td class="px-4 py-3">
                 <div class="font-medium text-gray-900">${it.name}</div>
-                <div class="text-xs text-gray-500">${it.sku || ""}${it.category ? " · " + it.category : ""}</div>
+                <div class="text-xs text-gray-500">${it.sku || ""}${it.barcode ? " · " + it.barcode : ""}${it.category ? " · " + it.category : ""}</div>
               </td>
               <td class="px-4 py-3">${whName}</td>
               <td class="px-4 py-3">${clName}</td>
@@ -449,7 +482,7 @@
       function openAddModal() {
         document.getElementById("modal-title").textContent = "Add Item";
         document.getElementById("i-id").value = "";
-        ["i-name","i-sku","i-category","i-cost","i-location","i-desc"].forEach((i) => (document.getElementById(i).value = ""));
+        ["i-name","i-sku","i-barcode","i-category","i-cost","i-location","i-desc"].forEach((i) => (document.getElementById(i).value = ""));
         document.getElementById("i-qty").value = 0;
         document.getElementById("i-unit").value = "each";
         document.getElementById("i-reorder").value = 0;
@@ -467,6 +500,7 @@
         document.getElementById("i-id").value = it._id;
         document.getElementById("i-name").value = it.name || "";
         document.getElementById("i-sku").value = it.sku || "";
+        document.getElementById("i-barcode").value = it.barcode || "";
         document.getElementById("i-category").value = it.category || "";
         document.getElementById("i-unit").value = it.unit || "each";
         document.getElementById("i-reorder").value = it.reorderPoint || 0;
@@ -497,6 +531,7 @@
         const body = {
           name: document.getElementById("i-name").value.trim(),
           sku: document.getElementById("i-sku").value.trim(),
+          barcode: document.getElementById("i-barcode").value.trim(),
           category: document.getElementById("i-category").value.trim(),
           unit: document.getElementById("i-unit").value.trim() || "each",
           reorderPoint: parseInt(document.getElementById("i-reorder").value) || 0,
@@ -563,6 +598,98 @@
           closeAdjust(); loadItems(); loadStatistics();
         } else showMessage(data.error || "Adjustment failed");
       }
+
+      // ---------- Barcode scanning ----------
+      function openScan() {
+        document.getElementById("scan-result").innerHTML = "";
+        document.getElementById("scan-input").value = "";
+        document.getElementById("scan-modal").classList.remove("hidden");
+        setTimeout(() => document.getElementById("scan-input").focus(), 50);
+      }
+      function closeScan() { teardownCam(); document.getElementById("scan-modal").classList.add("hidden"); }
+
+      async function scanLookup(code) {
+        code = (code || "").toString().trim();
+        if (!code) return;
+        const { ok, data } = await api(`/inventory/lookup?code=${encodeURIComponent(code)}`);
+        const el = document.getElementById("scan-result");
+        if (ok && data.success) {
+          const it = data.data.item;
+          const wh = it.warehouseId && it.warehouseId.name ? it.warehouseId.name : "—";
+          el.innerHTML = `
+            <div class="border rounded-lg p-4 bg-gray-50">
+              <div class="font-semibold text-gray-900">${it.name}</div>
+              <div class="text-xs text-gray-500 mb-2">${it.sku || ""}${it.barcode ? " · " + it.barcode : ""} · ${wh}</div>
+              <div class="text-sm mb-2">In stock: <span class="font-medium">${it.quantity} ${it.unit}</span></div>
+              <div class="flex items-center gap-2">
+                <input id="scan-qty" type="number" min="1" value="1" class="w-20 border border-gray-300 rounded-lg px-2 py-1.5" />
+                <button onclick="scanAdjust('${it._id}','receive')" class="flex-1 bg-green-600 text-white rounded-lg px-3 py-1.5 hover:bg-green-700"><i class="fas fa-arrow-down mr-1"></i>Receive</button>
+                <button onclick="scanAdjust('${it._id}','ship')" class="flex-1 bg-blue-600 text-white rounded-lg px-3 py-1.5 hover:bg-blue-700"><i class="fas fa-arrow-up mr-1"></i>Ship</button>
+              </div>
+            </div>`;
+        } else {
+          el.innerHTML = `<div class="border rounded-lg p-4 bg-red-50 text-red-700 text-sm">${data.error || "Not found"} <button onclick="addFromScan('${code.replace(/'/g, "&#39;")}')" class="ml-1 underline">Add new item</button></div>`;
+        }
+        const input = document.getElementById("scan-input");
+        input.value = ""; input.focus();
+      }
+
+      async function scanAdjust(id, type) {
+        const qty = parseInt(document.getElementById("scan-qty").value) || 0;
+        if (qty <= 0) return showMessage("Enter a quantity");
+        const { ok, data } = await api(`/inventory/${id}/adjust`, { method: "POST", body: JSON.stringify({ type, quantity: qty }) });
+        if (ok && data.success) {
+          showMessage(data.message, "success");
+          loadItems(); loadStatistics();
+          const it = data.data.item;
+          scanLookup(it.barcode || it.sku || "");
+        } else showMessage(data.error || "Adjustment failed");
+      }
+
+      function addFromScan(code) {
+        closeScan();
+        openAddModal();
+        document.getElementById("i-barcode").value = code;
+      }
+
+      // Generic one-shot camera scan (html5-qrcode) used by the scan modal and the item form.
+      let _cam = null;
+      const CAM_FORMATS = () => (window.Html5QrcodeSupportedFormats ? [
+        Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A, Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.ITF, Html5QrcodeSupportedFormats.QR_CODE,
+      ] : undefined);
+
+      async function scanOnce(onDecode) {
+        if (typeof Html5Qrcode === "undefined") return showMessage("Scanner library not loaded");
+        let overlay = document.getElementById("cam-overlay");
+        if (!overlay) {
+          overlay = document.createElement("div");
+          overlay.id = "cam-overlay";
+          overlay.className = "fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-[60] p-4";
+          overlay.innerHTML = '<div id="cam-reader" class="w-full max-w-sm bg-white rounded-lg overflow-hidden"></div><button onclick="cancelScanOnce()" class="mt-4 px-5 py-2 bg-white rounded-lg font-medium">Cancel</button>';
+          document.body.appendChild(overlay);
+        }
+        overlay.classList.remove("hidden");
+        _cam = new Html5Qrcode("cam-reader");
+        try {
+          await _cam.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 160 }, formatsToSupport: CAM_FORMATS() },
+            (decoded) => { teardownCam(); onDecode(decoded); });
+        } catch (e) {
+          showMessage("Camera unavailable: " + (e.message || e));
+          teardownCam();
+        }
+      }
+      function teardownCam() {
+        const o = document.getElementById("cam-overlay");
+        if (_cam) {
+          _cam.stop().then(() => { try { _cam.clear(); } catch (_) {} _cam = null; if (o) o.classList.add("hidden"); }).catch(() => { _cam = null; if (o) o.classList.add("hidden"); });
+        } else if (o) o.classList.add("hidden");
+      }
+      function cancelScanOnce() { teardownCam(); }
+      function scanCameraForLookup() { scanOnce(scanLookup); }
+      function scanIntoField(fieldId) { scanOnce((code) => { document.getElementById(fieldId).value = code; }); }
 
       init();
     </script>

@@ -95,7 +95,8 @@
 
       const FIELDS = [
         { key: "name", label: "Name", required: true, guesses: ["name", "item name", "item", "product", "productname"] },
-        { key: "sku", label: "SKU", guesses: ["sku", "item number", "itemnumber", "item #", "code", "part number", "partnumber", "upc"] },
+        { key: "sku", label: "SKU", guesses: ["sku", "item number", "itemnumber", "item #", "part number", "partnumber"] },
+        { key: "barcode", label: "Barcode", guesses: ["barcode", "upc", "ean", "gtin", "bar code"] },
         { key: "quantity", label: "Quantity", guesses: ["quantity", "qty", "on hand", "onhand", "stock", "count"] },
         { key: "unit", label: "Unit", guesses: ["unit", "uom", "unit of measure"] },
         { key: "reorderPoint", label: "Reorder point", guesses: ["reorder", "reorder point", "reorderpoint", "min", "minimum", "par"] },
@@ -289,8 +290,8 @@
       }
 
       function downloadTemplate() {
-        const headers = ["name", "sku", "quantity", "unit", "reorderPoint", "unitCost", "category", "location", "warehouse", "client"];
-        const example = ["Widget A", "WID-A", "100", "each", "20", "4.50", "Packaging", "A-1-1", "", ""];
+        const headers = ["name", "sku", "barcode", "quantity", "unit", "reorderPoint", "unitCost", "category", "location", "warehouse", "client"];
+        const example = ["Widget A", "WID-A", "0123456789012", "100", "each", "20", "4.50", "Packaging", "A-1-1", "", ""];
         const csv = headers.join(",") + "\n" + example.join(",") + "\n";
         const blob = new Blob([csv], { type: "text/csv" });
         const a = document.createElement("a");
