@@ -39,8 +39,10 @@
         </button>
       </div>
 
-      <div class="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-gray-900" id="stat-clients">0</div><div class="text-sm text-gray-500">Total Clients</div></div>
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-amber-600" id="stat-items">0</div><div class="text-sm text-gray-500">Items Stored</div></div>
+        <div class="bg-white rounded-xl shadow-sm p-5"><div class="text-3xl font-bold text-purple-600" id="stat-avg">0</div><div class="text-sm text-gray-500">Avg Items / Client</div></div>
       </div>
 
       <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-end">
@@ -180,7 +182,14 @@
       }
       async function loadStatistics() {
         const { ok, data } = await api("/clients/statistics");
-        if (ok && data.success) document.getElementById("stat-clients").textContent = data.data.totalClients;
+        if (ok && data.success) {
+          const { totalClients, totalItems } = data.data;
+          document.getElementById("stat-clients").textContent = totalClients;
+          document.getElementById("stat-items").textContent = (totalItems || 0).toLocaleString();
+          document.getElementById("stat-avg").textContent = totalClients
+            ? Math.round((totalItems || 0) / totalClients)
+            : 0;
+        }
       }
       function debouncedLoad() { clearTimeout(searchTimeout); searchTimeout = setTimeout(() => { currentPage = 1; loadClients(); }, 350); }
 

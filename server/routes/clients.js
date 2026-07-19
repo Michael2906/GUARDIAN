@@ -84,7 +84,12 @@ router.get("/statistics", authenticateToken, async (req, res) => {
   try {
     const scope = scopeWhere(req);
     const totalClients = await ClientBusiness.count({ where: scope });
-    res.json({ success: true, data: { totalClients } });
+    // Client-attributed inventory items in the same tenant scope.
+    const itemWhere = { isActive: true, clientBusinessId: { [Op.ne]: null } };
+    if (scope.storageCompanyId) itemWhere.storageCompanyId = scope.storageCompanyId;
+    if (scope.id) itemWhere.clientBusinessId = scope.id; // client user: their own
+    const totalItems = await InventoryItem.count({ where: itemWhere });
+    res.json({ success: true, data: { totalClients, totalItems } });
   } catch (error) {
     console.error("Client statistics error:", error);
     res.status(500).json({ success: false, error: "Failed to retrieve statistics" });
